@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simple Projection Mapping POC</title>
+  <style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: #111;
+        color: #eee;
+        font-family: system-ui, sans-serif;
+        height: 100%;
+        width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #app {
+        position: relative;
+        height: 100%;
+        width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        overflow: hidden;
+        border: 1px solid #444;
+        background: #000;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        overflow: hidden;
+    }
+
+    #glcanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Video is alleen bron, niet zichtbaar */
+    #video {
+      display: none;
+    }
+
+    #playHint {
+      opacity: 0;
+    }
+    #playHint:hover {
+      opacity: 1;
+    }
+
+    .handle {
+        position: absolute;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: rgba(255, 0, 0, 0.9);
+        border: 2px solid #fff;
+        transform: translate(-50%, -50%);
+        cursor: move;
+        box-shadow: 0 0 6px rgba(0,0,0,0.8);
+        z-index: 10;
+        user-select: none;
+        opacity: 0;
+    }
+
+    .handle:hover {
+        background: rgba(235, 255, 80, 0.5);
+        opacity: 1;
+    }
+
+    #info {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      background: rgba(0,0,0,0.6);
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    #playHint {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+    }
+
+    #playBtn {
+      padding: 3px 8px;
+      margin-left: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      background: #0b84ff;
+      border: none;
+      color: #fff;
+      border-radius: 3px;
+    }
+
+    #playBtn:hover {
+      background: #46a3ff;
+    }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: stretch;
+      font-size: 12px;
+      max-width: 360px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    #controls:hover {
+      opacity: 1;
+    }
+
+    .controls-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 6px 10px;
+      border-radius: 4px;
+      gap: 10px;
+    }
+
+    .add-content-btn {
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      background: #22c55e;
+      border: none;
+      color: #0b0b0b;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .control-block {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 8px 10px;
+      border-radius: 4px;
+    }
+
+    .control-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+
+    .control-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9bd4ff;
+    }
+
+    .control-remove-btn {
+      background: transparent;
+      border: none;
+      color: #ff8c8c;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 2px;
+    }
+    .control-remove-btn:hover {
+      color: #ff5555;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    #controls label,
+    .control-label {
+      font-size: 11px;
+      color: #ddd;
+    }
+
+    .control-block input[type="text"] {
+      background: #111;
+      border: 1px solid #555;
+      border-radius: 3px;
+      padding: 2px 4px;
+      color: #fff;
+      width: 90px;
+    }
+
+    .control-block input[type="file"] {
+      font-size: 11px;
+      color: #ccc;
+    }
+
+    .control-block button,
+    #playBtn {
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      background: #0b84ff;
+      border: none;
+      color: #fff;
+      border-radius: 3px;
+    }
+
+    .control-block button.secondary {
+      background: #444;
+    }
+
+    .control-block button.danger {
+      background: #d72638;
+    }
+
+    .control-block input.invalid {
+      border-color: #ff5b5b71;
+    }
+
+    .control-status {
+      font-size: 11px;
+      color: #bbb;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
+
+    /* Animations */
+    .border-rainbow{
+        animation: border-angle-rotate 2s infinite linear;
+        border: 0.5rem solid transparent;
+        background: linear-gradient(black, black) padding-box,
+        conic-gradient(
+            from var(--border-angle),
+            oklch(100% 100% 0deg),
+            oklch(100% 100% 45deg),
+            oklch(100% 100% 90deg),
+            oklch(100% 100% 135deg),
+            oklch(100% 100% 180deg),
+            oklch(100% 100% 225deg),
+            oklch(100% 100% 270deg),
+            oklch(100% 100% 315deg),
+            oklch(100% 100% 360deg)
+            )
+            border-box;
+        
+    }
+    @keyframes border-angle-rotate {
+        from { --border-angle: 0deg; }
+        to { --border-angle: 360deg; }
+    }
+    @property --border-angle {
+        syntax: "<angle>";
+        initial-value: 0deg;
+        inherits: false;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="glcanvas"></canvas>
+
+    <div id="controls">
+      <div class="controls-top">
+        <div class="control-title">Content blokken</div>
+        <button id="addContentBtn" type="button" class="add-content-btn">+ Content</button>
+      </div>
+      <div id="contentList"></div>
+    </div>
+
+
+
+    <div id="playHint">
+      Als de video niet speelt:
+      <button id="playBtn" type="button">Play video</button>
+    </div>
+  </div>
+
+  <!-- three.js via CDN -->
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+    const app = document.getElementById('app');
+    const canvas = document.getElementById('glcanvas');
+    const contentList = document.getElementById('contentList');
+    const addContentBtn = document.getElementById('addContentBtn');
+    const playBtn = document.getElementById('playBtn');
+
+    let width = app.clientWidth;
+    let height = app.clientHeight;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(width, height, false);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    const textureLoader = new THREE.TextureLoader();
+
+    const PLACEHOLDER_IMAGE = 'test.webp';
+    let sharedPlaceholderTexture = null;
+    let placeholderLoadStarted = false;
+    let placeholderLoadFailed = false;
+    const placeholderWaiters = [];
+
+    function startPlaceholderLoad() {
+      if (placeholderLoadStarted) return;
+      placeholderLoadStarted = true;
+      textureLoader.load(
+        PLACEHOLDER_IMAGE,
+        texture => {
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          sharedPlaceholderTexture = texture;
+          const callbacks = placeholderWaiters.splice(0, placeholderWaiters.length);
+          callbacks.forEach(cb => cb(texture));
+        },
+        undefined,
+        error => {
+          placeholderLoadFailed = true;
+          console.error('Kon placeholder niet laden:', error);
+          placeholderWaiters.length = 0;
+        }
+      );
+    }
+
+    function onPlaceholderReady(callback) {
+      if (sharedPlaceholderTexture) {
+        callback(sharedPlaceholderTexture);
+      } else if (!placeholderLoadFailed) {
+        placeholderWaiters.push(callback);
+        startPlaceholderLoad();
+      }
+    }
+
+    startPlaceholderLoad();
+
+    const EFFECT_OPTIONS = [
+      { value: '', label: 'Geen effect' },
+      { value: 'border-rainbow', label: 'Border Rainbow' }
+    ];
+
+    const EFFECT_DEFINITIONS = {
+      'border-rainbow': {
+        size: 5120,
+        draw(ctx, time) {
+          const { width } = ctx.canvas;
+          const height = ctx.canvas.height;
+          const borderWidthPx = 8;
+          const minDim = Math.min(width, height);
+          ctx.clearRect(0, 0, width, height);
+          let gradient;
+          const rotation = (time * 0.0005) % (Math.PI * 2);
+          if (typeof ctx.createConicGradient === 'function') {
+            gradient = ctx.createConicGradient(rotation, width / 2, height / 2);
+          } else {
+            gradient = ctx.createLinearGradient(0, 0, width, height);
+          }
+          gradient.addColorStop(0.0, '#ff5f6d');
+          gradient.addColorStop(0.17, '#ffc371');
+          gradient.addColorStop(0.33, '#47c6ff');
+          gradient.addColorStop(0.5, '#ac6cff');
+          gradient.addColorStop(0.67, '#53f3d3');
+          gradient.addColorStop(0.83, '#f6d365');
+          gradient.addColorStop(1.0, '#ff5f6d');
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, width, height);
+          ctx.strokeStyle = gradient;
+          ctx.lineWidth = Math.min(borderWidthPx, width * 0.15);
+          ctx.lineCap = 'round';
+          const inset = minDim * 0.075;
+          const rectWidth = Math.max(0, width - inset * 2);
+          const rectHeight = Math.max(0, height - inset * 2);
+          ctx.strokeRect(inset, inset, rectWidth, rectHeight);
+          ctx.fillStyle = 'rgba(0,0,0,0.7)';
+          const innerInset = minDim * 0.2;
+          const innerWidth = Math.max(0, width - innerInset * 2);
+          const innerHeight = Math.max(0, height - innerInset * 2);
+          ctx.fillRect(innerInset, innerInset, innerWidth, innerHeight);
+        }
+      }
+    };
+
+    const camera = new THREE.OrthographicCamera(
+      0,
+      width,
+      height,
+      0,
+      -10,
+      10
+    );
+    camera.position.z = 5;
+
+    const targetUVs = [
+      { u: 0, v: 1 },
+      { u: 1, v: 1 },
+      { u: 0, v: 0 },
+      { u: 1, v: 0 }
+    ];
+
+    const BASE_COLOR_PALETTE = ['#00c8ff', '#ff5470', '#facc15', '#34d399', '#c084fc', '#f97316'];
+    const DEFAULT_COLOR = '#00c8ff';
+
+    const surfaces = new Map();
+    const surfaceOrder = [];
+    let surfaceCounter = 0;
+
+    function worldToDom(x, y) {
+      return {
+        left: x,
+        top: height - y
+      };
+    }
+
+    function createVideoElement() {
+      const videoEl = document.createElement('video');
+      videoEl.autoplay = false;
+      videoEl.loop = true;
+      videoEl.muted = true;
+      videoEl.playsInline = true;
+      videoEl.style.display = 'none';
+      app.appendChild(videoEl);
+      return videoEl;
+    }
+
+    function createVideoTexture(element) {
+      const texture = new THREE.VideoTexture(element);
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      return texture;
+    }
+
+    function createShaderMaterial(initialTexture, matrix) {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          map: { value: initialTexture },
+          homography: { value: matrix }
+        },
+        vertexShader: `
+          varying vec2 vWorld;
+          void main() {
+            vWorld = position.xy;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D map;
+          uniform mat3 homography;
+          varying vec2 vWorld;
+
+          void main() {
+            vec3 uvw = homography * vec3(vWorld, 1.0);
+            float w = uvw.z;
+            if (abs(w) < 1e-6) discard;
+            vec2 uv = uvw.xy / w;
+            if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+              discard;
+            }
+            gl_FragColor = texture2D(map, uv);
+          }
+        `,
+        side: THREE.DoubleSide,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false
+      });
+    }
+
+    function normalizeHex(value) {
+      if (!value) return null;
+      const hex = value.trim().replace(/^#/, '');
+      if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+        return `#${hex.toLowerCase()}`;
+      }
+      return null;
+    }
+
+    function createColorTexture(hex) {
+      const color = new THREE.Color(hex);
+      const data = new Uint8Array([
+        Math.round(color.r * 255),
+        Math.round(color.g * 255),
+        Math.round(color.b * 255),
+        255
+      ]);
+      const texture = new THREE.DataTexture(data, 1, 1, THREE.RGBAFormat);
+      texture.needsUpdate = true;
+      return texture;
+    }
+
+    function getDefaultColor(index) {
+      return BASE_COLOR_PALETTE[index % BASE_COLOR_PALETTE.length];
+    }
+
+    function getCenteredRect() {
+      const rectWidth = width * 0.5;
+      const rectHeight = height * 0.5;
+      const left = (width - rectWidth) / 2;
+      const bottom = (height - rectHeight) / 2;
+      return {
+        left,
+        right: left + rectWidth,
+        bottom,
+        top: bottom + rectHeight
+      };
+    }
+
+    function applyRectToGeometry(geometry, rect) {
+      const posAttr = geometry.getAttribute('position');
+      const arr = posAttr.array;
+      arr[0] = rect.left;
+      arr[1] = rect.top;
+      arr[2] = 0;
+      arr[3] = rect.right;
+      arr[4] = rect.top;
+      arr[5] = 0;
+      arr[6] = rect.left;
+      arr[7] = rect.bottom;
+      arr[8] = 0;
+      arr[9] = rect.right;
+      arr[10] = rect.bottom;
+      arr[11] = 0;
+      posAttr.needsUpdate = true;
+    }
+
+    function createBaseGeometry(rect) {
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(12);
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const uvs = new Float32Array([
+        0, 1,
+        1, 1,
+        0, 0,
+        1, 0
+      ]);
+      geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+      geometry.setIndex([0, 1, 2, 2, 1, 3]);
+      applyRectToGeometry(geometry, rect || {
+        left: 0,
+        right: width,
+        bottom: 0,
+        top: height
+      });
+      return geometry;
+    }
+
+    function getSurfaceBounds(surface) {
+      const posAttr = surface.geometry.getAttribute('position');
+      const arr = posAttr.array;
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (let i = 0; i < arr.length; i += 3) {
+        const x = arr[i];
+        const y = arr[i + 1];
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+      const boundsWidth = Math.max(1, maxX - minX);
+      const boundsHeight = Math.max(1, maxY - minY);
+      return {
+        width: boundsWidth,
+        height: boundsHeight,
+        aspect: boundsWidth / boundsHeight
+      };
+    }
+
+    function solveHomography(src, dst) {
+      const size = 8;
+      const rows = size;
+      const augmented = new Array(rows);
+
+      for (let i = 0; i < 4; i++) {
+        const { x, y } = src[i];
+        const { u, v } = dst[i];
+        augmented[i * 2] = [x, y, 1, 0, 0, 0, -u * x, -u * y, u];
+        augmented[i * 2 + 1] = [0, 0, 0, x, y, 1, -v * x, -v * y, v];
+      }
+
+      for (let col = 0; col < size; col++) {
+        let pivotRow = col;
+        let maxVal = Math.abs(augmented[pivotRow][col]);
+        for (let r = col + 1; r < rows; r++) {
+          const val = Math.abs(augmented[r][col]);
+          if (val > maxVal) {
+            maxVal = val;
+            pivotRow = r;
+          }
+        }
+
+        if (maxVal < 1e-10) {
+          return null;
+        }
+
+        if (pivotRow !== col) {
+          const temp = augmented[col];
+          augmented[col] = augmented[pivotRow];
+          augmented[pivotRow] = temp;
+        }
+
+        const pivot = augmented[col][col];
+        for (let c = col; c <= size; c++) {
+          augmented[col][c] /= pivot;
+        }
+
+        for (let r = 0; r < rows; r++) {
+          if (r === col) continue;
+          const factor = augmented[r][col];
+          if (Math.abs(factor) < 1e-12) continue;
+          for (let c = col; c <= size; c++) {
+            augmented[r][c] -= factor * augmented[col][c];
+          }
+        }
+      }
+
+      return augmented.map(row => row[size]);
+    }
+
+    function createHandleElement(surfaceId, index) {
+      const handle = document.createElement('div');
+      handle.className = 'handle';
+      handle.dataset.surface = surfaceId;
+      handle.dataset.index = index;
+      app.appendChild(handle);
+      return handle;
+    }
+
+    function createHandles(surfaceId) {
+      return [0, 1, 2, 3].map(index => createHandleElement(surfaceId, index));
+    }
+
+    function setHandlesFromGeometry(surface) {
+      const posAttr = surface.geometry.getAttribute('position');
+      surface.handles.forEach((handle, index) => {
+        const base = index * 3;
+        const dom = worldToDom(posAttr.array[base], posAttr.array[base + 1]);
+        handle.style.left = dom.left + 'px';
+        handle.style.top = dom.top + 'px';
+      });
+    }
+
+    function updateHomography(surface) {
+      const posAttr = surface.geometry.getAttribute('position');
+      const quad = [];
+      for (let i = 0; i < 4; i++) {
+        const base = i * 3;
+        quad.push({ x: posAttr.array[base], y: posAttr.array[base + 1] });
+      }
+      const solution = solveHomography(quad, targetUVs);
+      if (!solution) return;
+      surface.homography.set(
+        solution[0], solution[1], solution[2],
+        solution[3], solution[4], solution[5],
+        solution[6], solution[7], 1
+      );
+      surface.material.uniformsNeedUpdate = true;
+    }
+
+    function setSurfaceTexture(surface, texture, mode = 'color') {
+      surface.material.uniforms.map.value = texture;
+      surface.currentTexture = texture;
+      surface.currentMedia = mode;
+      surface.material.needsUpdate = true;
+      surface.material.uniformsNeedUpdate = true;
+    }
+
+    function updateSurfaceStatus(surface) {
+      if (!surface.ui || !surface.ui.status) return;
+      if (surface.currentMedia === 'video' && surface.videoLabel) {
+        surface.ui.status.textContent = `Video: ${surface.videoLabel}`;
+      } else if (surface.currentMedia === 'image' && surface.imageLabel) {
+        surface.ui.status.textContent = `Afbeelding: ${surface.imageLabel}`;
+      } else if (surface.currentMedia === 'effect' && surface.effectName) {
+        surface.ui.status.textContent = `Effect: ${surface.effectName}`;
+      } else {
+        surface.ui.status.textContent = `Kleur ${surface.colorHex}`;
+      }
+      if (surface.ui.removeVideoBtn) {
+        surface.ui.removeVideoBtn.disabled = surface.currentMedia !== 'video';
+      }
+      if (surface.ui.removeImageBtn) {
+        surface.ui.removeImageBtn.disabled = surface.currentMedia !== 'image';
+      }
+    }
+
+    function clearSurfaceVideo(surface) {
+      if (surface.currentMedia !== 'video' && !surface.currentVideoUrl) return;
+      if (surface.currentVideoUrl) {
+        URL.revokeObjectURL(surface.currentVideoUrl);
+        surface.currentVideoUrl = null;
+      }
+      surface.videoElement.pause();
+      surface.videoElement.removeAttribute('src');
+      surface.videoElement.load();
+      surface.videoLabel = '';
+      setSurfaceTexture(surface, surface.colorTexture, 'color');
+      if (surface.ui && surface.ui.videoInput) {
+        surface.ui.videoInput.value = '';
+      }
+      if (surface.ui && surface.ui.removeVideoBtn) {
+        surface.ui.removeVideoBtn.disabled = true;
+      }
+      updateSurfaceStatus(surface);
+      applyPlaceholderImage(surface);
+    }
+
+    function clearSurfaceImage(surface) {
+      if (!surface.imageTexture && surface.currentMedia !== 'image') return;
+      if (surface.imageTexture) {
+        if (!surface.usingPlaceholderImage) {
+          surface.imageTexture.dispose();
+        }
+        surface.imageTexture = null;
+      }
+      if (surface.currentImageUrl) {
+        URL.revokeObjectURL(surface.currentImageUrl);
+        surface.currentImageUrl = null;
+      }
+      surface.imageLabel = '';
+      surface.usingPlaceholderImage = false;
+      if (surface.ui && surface.ui.imageInput) {
+        surface.ui.imageInput.value = '';
+      }
+      if (surface.ui && surface.ui.removeImageBtn) {
+        surface.ui.removeImageBtn.disabled = true;
+      }
+      setSurfaceTexture(surface, surface.colorTexture, 'color');
+      updateSurfaceStatus(surface);
+      applyPlaceholderImage(surface);
+    }
+
+    function handleSurfaceVideoSelection(surface, file) {
+      if (!file) return;
+      if (surface.currentMedia === 'effect') {
+        clearSurfaceEffect(surface, { revertToColor: false });
+      }
+      if (surface.currentMedia === 'image') {
+        clearSurfaceImage(surface);
+      }
+      if (surface.currentVideoUrl) {
+        URL.revokeObjectURL(surface.currentVideoUrl);
+      }
+      surface.currentVideoUrl = URL.createObjectURL(file);
+      surface.videoElement.pause();
+      surface.videoElement.src = surface.currentVideoUrl;
+      surface.videoElement.load();
+      surface.videoElement.play().catch(err => console.error('Kon video niet starten:', err));
+      surface.videoLabel = file.name;
+      setSurfaceTexture(surface, surface.videoTexture, 'video');
+      if (surface.ui && surface.ui.removeVideoBtn) {
+        surface.ui.removeVideoBtn.disabled = false;
+      }
+      updateSurfaceStatus(surface);
+    }
+
+    function handleSurfaceImageSelection(surface, file) {
+      if (!file) return;
+      if (surface.currentMedia === 'effect') {
+        clearSurfaceEffect(surface, { revertToColor: false });
+      }
+      if (surface.currentMedia === 'video') {
+        clearSurfaceVideo(surface);
+      }
+      clearSurfaceImage(surface);
+      const objectUrl = URL.createObjectURL(file);
+      textureLoader.load(
+        objectUrl,
+        texture => {
+          if (surface.imageTexture) {
+            surface.imageTexture.dispose();
+          }
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          surface.imageTexture = texture;
+          surface.imageLabel = file.name;
+          surface.currentImageUrl = objectUrl;
+          surface.usingPlaceholderImage = false;
+          setSurfaceTexture(surface, texture, 'image');
+          if (surface.ui && surface.ui.removeImageBtn) {
+            surface.ui.removeImageBtn.disabled = false;
+          }
+          updateSurfaceStatus(surface);
+        },
+        undefined,
+        error => {
+          console.error('Kon afbeelding niet laden:', error);
+          URL.revokeObjectURL(objectUrl);
+          if (surface.ui && surface.ui.imageInput) {
+            surface.ui.imageInput.value = '';
+          }
+        }
+      );
+    }
+
+    function clearSurfaceEffect(surface, { resetUI = true, revertToColor = true } = {}) {
+      if (!surface.effectName && !surface.effectTexture) return;
+      if (surface.effectTexture) {
+        surface.effectTexture.dispose();
+      }
+      surface.effectTexture = null;
+      surface.effectCanvas = null;
+      surface.effectCtx = null;
+      surface.effectDefinition = null;
+      surface.effectName = '';
+      surface.effectStartTime = 0;
+      surface.effectLastTime = 0;
+      surface.effectAspect = 1;
+      surface.effectBounds = null;
+      if (resetUI && surface.ui && surface.ui.effectSelect) {
+        surface.ui.effectSelect.value = '';
+      }
+      if (revertToColor) {
+        setSurfaceTexture(surface, surface.colorTexture, 'color');
+        updateSurfaceStatus(surface);
+        applyPlaceholderImage(surface);
+      }
+    }
+
+    function applyEffectToSurface(surface, effectName, { force = false } = {}) {
+      const isActiveEffect = surface.currentMedia === 'effect' && surface.effectName === effectName;
+      if (!force && isActiveEffect) return;
+      if (!effectName) {
+        clearSurfaceEffect(surface, { resetUI: false, revertToColor: true });
+        if (surface.ui && surface.ui.effectSelect) {
+          surface.ui.effectSelect.value = '';
+        }
+        return;
+      }
+      if (surface.currentMedia === 'video') {
+        clearSurfaceVideo(surface);
+      } else if (surface.currentMedia === 'image' && !surface.usingPlaceholderImage) {
+        clearSurfaceImage(surface);
+      }
+      clearSurfaceEffect(surface, { resetUI: false, revertToColor: false });
+      const definition = EFFECT_DEFINITIONS[effectName];
+      if (!definition) return;
+      const bounds = getSurfaceBounds(surface);
+      const baseSize = definition.size || 512;
+      const aspect = Math.max(bounds.aspect, 1 / 64);
+      let canvasWidth = baseSize;
+      let canvasHeight = baseSize;
+      if (aspect > 1) {
+        canvasWidth = Math.round(baseSize * aspect);
+      } else {
+        canvasHeight = Math.round(baseSize / aspect);
+      }
+      const maxSize = definition.maxSize || 2048;
+      const scale = Math.min(maxSize / Math.max(canvasWidth, canvasHeight), 1);
+      canvasWidth = Math.max(4, Math.round(canvasWidth * scale));
+      canvasHeight = Math.max(4, Math.round(canvasHeight * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('Kan canvas context niet creëren voor effect');
+        return;
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      surface.effectName = effectName;
+      surface.effectCanvas = canvas;
+      surface.effectCtx = ctx;
+      surface.effectDefinition = definition;
+      surface.effectTexture = texture;
+      surface.effectStartTime = performance.now();
+      surface.effectLastTime = 0;
+      surface.effectAspect = aspect;
+      surface.effectBounds = bounds;
+      surface.usingPlaceholderImage = false;
+      surface.imageTexture = null;
+      surface.currentImageUrl = null;
+      surface.imageLabel = '';
+      setSurfaceTexture(surface, texture, 'effect');
+      if (surface.ui && surface.ui.effectSelect) {
+        surface.ui.effectSelect.value = effectName;
+      }
+      updateSurfaceStatus(surface);
+    }
+
+    function applyPlaceholderImage(surface) {
+      if (placeholderLoadFailed) return;
+      onPlaceholderReady(texture => {
+        if (!surfaces.has(surface.id)) return;
+        if (surface.currentMedia !== 'color') return;
+        surface.imageTexture = texture;
+        surface.imageLabel = PLACEHOLDER_IMAGE;
+        surface.currentImageUrl = null;
+        surface.usingPlaceholderImage = true;
+        setSurfaceTexture(surface, texture, 'image');
+        if (surface.ui && surface.ui.removeImageBtn) {
+          surface.ui.removeImageBtn.disabled = false;
+        }
+        updateSurfaceStatus(surface);
+      });
+    }
+
+    function applySurfaceColor(surface, rawValue) {
+      const normalized = normalizeHex(rawValue || '');
+      if (!normalized) {
+        if (surface.ui && surface.ui.colorInput) {
+          surface.ui.colorInput.classList.add('invalid');
+        }
+        return;
+      }
+      if (surface.ui && surface.ui.colorInput) {
+        surface.ui.colorInput.classList.remove('invalid');
+        surface.ui.colorInput.value = normalized;
+      }
+      const previousTexture = surface.colorTexture;
+      surface.colorHex = normalized;
+      surface.colorTexture = createColorTexture(normalized);
+      if (surface.currentMedia === 'video') {
+        clearSurfaceVideo(surface);
+      } else if (surface.currentMedia === 'image') {
+        clearSurfaceImage(surface);
+      } else if (surface.currentMedia === 'effect') {
+        clearSurfaceEffect(surface, { revertToColor: false });
+      }
+      setSurfaceTexture(surface, surface.colorTexture, 'color');
+      if (previousTexture) {
+        previousTexture.dispose();
+      }
+      updateSurfaceStatus(surface);
+    }
+
+    function createSurfaceUI(surface) {
+      const block = document.createElement('div');
+      block.className = 'control-block';
+      block.dataset.surfaceId = surface.id;
+
+      const header = document.createElement('div');
+      header.className = 'control-block-header';
+      const title = document.createElement('div');
+      title.className = 'control-title';
+      header.appendChild(title);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'control-remove-btn';
+      removeBtn.setAttribute('aria-label', 'Verwijder content');
+      removeBtn.textContent = '×';
+      header.appendChild(removeBtn);
+      block.appendChild(header);
+
+      const colorRow = document.createElement('div');
+      colorRow.className = 'control-row';
+      const colorLabel = document.createElement('span');
+      colorLabel.className = 'control-label';
+      colorLabel.textContent = 'Kleur';
+      const colorInput = document.createElement('input');
+      colorInput.type = 'text';
+      colorInput.maxLength = 7;
+      colorInput.value = surface.colorHex;
+      const applyBtn = document.createElement('button');
+      applyBtn.type = 'button';
+      applyBtn.className = 'secondary';
+      applyBtn.textContent = 'Pas toe';
+      colorRow.appendChild(colorLabel);
+      colorRow.appendChild(colorInput);
+      colorRow.appendChild(applyBtn);
+      block.appendChild(colorRow);
+
+      const videoRow = document.createElement('div');
+      videoRow.className = 'control-row';
+      const videoLabel = document.createElement('span');
+      videoLabel.className = 'control-label';
+      videoLabel.textContent = 'Video';
+      const videoInput = document.createElement('input');
+      videoInput.type = 'file';
+      videoInput.accept = 'video/*';
+      const removeVideoBtn = document.createElement('button');
+      removeVideoBtn.type = 'button';
+      removeVideoBtn.className = 'secondary';
+      removeVideoBtn.textContent = 'Verwijder video';
+      removeVideoBtn.disabled = true;
+      videoRow.appendChild(videoLabel);
+      videoRow.appendChild(videoInput);
+      videoRow.appendChild(removeVideoBtn);
+      block.appendChild(videoRow);
+
+      const imageRow = document.createElement('div');
+      imageRow.className = 'control-row';
+      const imageLabel = document.createElement('span');
+      imageLabel.className = 'control-label';
+      imageLabel.textContent = 'Afbeelding';
+      const imageInput = document.createElement('input');
+      imageInput.type = 'file';
+      imageInput.accept = 'image/*';
+      const removeImageBtn = document.createElement('button');
+      removeImageBtn.type = 'button';
+      removeImageBtn.className = 'secondary';
+      removeImageBtn.textContent = 'Verwijder afbeelding';
+      removeImageBtn.disabled = true;
+      imageRow.appendChild(imageLabel);
+      imageRow.appendChild(imageInput);
+      imageRow.appendChild(removeImageBtn);
+      block.appendChild(imageRow);
+
+      const effectRow = document.createElement('div');
+      effectRow.className = 'control-row';
+      const effectLabel = document.createElement('span');
+      effectLabel.className = 'control-label';
+      effectLabel.textContent = 'CSS effect';
+      const effectSelect = document.createElement('select');
+      EFFECT_OPTIONS.forEach(optionData => {
+        const option = document.createElement('option');
+        option.value = optionData.value;
+        option.textContent = optionData.label;
+        effectSelect.appendChild(option);
+      });
+      effectRow.appendChild(effectLabel);
+      effectRow.appendChild(effectSelect);
+      block.appendChild(effectRow);
+
+      const statusRow = document.createElement('div');
+      statusRow.className = 'control-row';
+      const status = document.createElement('span');
+      status.className = 'control-status';
+      statusRow.appendChild(status);
+      block.appendChild(statusRow);
+
+      contentList.appendChild(block);
+
+      surface.ui = {
+        block,
+        title,
+        colorInput,
+        applyBtn,
+        videoInput,
+        removeVideoBtn,
+        imageInput,
+        removeImageBtn,
+        effectSelect,
+        status,
+        removeBtn
+      };
+      if (surface.effectName) {
+        effectSelect.value = surface.effectName;
+      }
+
+      applyBtn.addEventListener('click', () => applySurfaceColor(surface, colorInput.value));
+      colorInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          applySurfaceColor(surface, colorInput.value);
+        }
+      });
+      colorInput.addEventListener('blur', () => applySurfaceColor(surface, colorInput.value));
+      videoInput.addEventListener('change', event => {
+        const file = event.target.files && event.target.files[0];
+        handleSurfaceVideoSelection(surface, file);
+      });
+      removeVideoBtn.addEventListener('click', () => clearSurfaceVideo(surface));
+      imageInput.addEventListener('change', event => {
+        const file = event.target.files && event.target.files[0];
+        handleSurfaceImageSelection(surface, file);
+      });
+      removeImageBtn.addEventListener('click', () => clearSurfaceImage(surface));
+      effectSelect.addEventListener('change', event => {
+        applyEffectToSurface(surface, event.target.value);
+      });
+      removeBtn.addEventListener('click', () => removeSurface(surface.id));
+    }
+
+    function refreshSurfaceTitles() {
+      surfaceOrder.forEach((id, index) => {
+        const surface = surfaces.get(id);
+        if (surface && surface.ui && surface.ui.title) {
+          surface.ui.title.textContent = `Content ${index + 1}`;
+        }
+      });
+    }
+
+    function refreshSurfaceOrdering() {
+      surfaceOrder.forEach((id, index) => {
+        const surface = surfaces.get(id);
+        if (surface) {
+          surface.mesh.renderOrder = index;
+        }
+      });
+    }
+
+    function createSurface({ colorHex } = {}) {
+      const id = `surface-${++surfaceCounter}`;
+      const videoElement = createVideoElement();
+      const videoTexture = createVideoTexture(videoElement);
+      const paletteColor = colorHex || getDefaultColor(surfaceOrder.length);
+      const normalizedColor = normalizeHex(paletteColor) || DEFAULT_COLOR;
+      const colorTexture = createColorTexture(normalizedColor);
+      const geometry = createBaseGeometry(getCenteredRect());
+      const homographyMatrix = new THREE.Matrix3();
+      const material = createShaderMaterial(colorTexture, homographyMatrix);
+      const mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+      const handles = createHandles(id);
+
+      const surface = {
+        id,
+        geometry,
+        homography: homographyMatrix,
+        material,
+        mesh,
+        handles,
+        videoElement,
+        videoTexture,
+        colorTexture,
+        colorHex: normalizedColor,
+        currentVideoUrl: null,
+        currentMedia: 'color',
+        videoLabel: '',
+        imageTexture: null,
+        currentImageUrl: null,
+        imageLabel: '',
+        usingPlaceholderImage: false,
+        effectName: '',
+        effectCanvas: null,
+        effectCtx: null,
+        effectTexture: null,
+        effectDefinition: null,
+        effectStartTime: 0,
+        effectLastTime: 0,
+        effectAspect: 1,
+        effectBounds: null,
+        ui: null
+      };
+
+      surfaces.set(id, surface);
+      surfaceOrder.push(id);
+
+      setSurfaceTexture(surface, colorTexture, 'color');
+      setHandlesFromGeometry(surface);
+      updateHomography(surface);
+      createSurfaceUI(surface);
+      updateSurfaceStatus(surface);
+      applyPlaceholderImage(surface);
+      refreshSurfaceTitles();
+      refreshSurfaceOrdering();
+      return surface;
+    }
+
+    function removeSurface(surfaceId) {
+      const surface = surfaces.get(surfaceId);
+      if (!surface) return;
+      if (surface === activeSurface) {
+        onMouseUp();
+      }
+
+      if (surface.currentVideoUrl) {
+        URL.revokeObjectURL(surface.currentVideoUrl);
+      }
+      if (surface.currentImageUrl) {
+        URL.revokeObjectURL(surface.currentImageUrl);
+      }
+      surface.videoElement.pause();
+      surface.videoElement.remove();
+      surface.handles.forEach(handle => handle.remove());
+      scene.remove(surface.mesh);
+      surface.geometry.dispose();
+      surface.material.dispose();
+      if (surface.colorTexture) surface.colorTexture.dispose();
+      if (surface.videoTexture) surface.videoTexture.dispose();
+      if (surface.imageTexture && !surface.usingPlaceholderImage) surface.imageTexture.dispose();
+      if (surface.effectTexture) surface.effectTexture.dispose();
+      if (surface.ui && surface.ui.block) {
+        surface.ui.block.remove();
+      }
+
+      surfaces.delete(surfaceId);
+      const index = surfaceOrder.indexOf(surfaceId);
+      if (index > -1) {
+        surfaceOrder.splice(index, 1);
+      }
+
+      refreshSurfaceTitles();
+      refreshSurfaceOrdering();
+
+      if (surfaceOrder.length === 0) {
+        createSurface();
+      }
+    }
+
+    let activeSurface = null;
+    let activeHandleIndex = null;
+
+    function onMouseDown(event) {
+      const target = event.target;
+      if (!target.classList.contains('handle')) return;
+      const surfaceId = target.dataset.surface;
+      const surface = surfaces.get(surfaceId);
+      if (!surface) return;
+
+      event.preventDefault();
+      activeSurface = surface;
+      activeHandleIndex = parseInt(target.dataset.index, 10);
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+
+      if (surface.currentMedia === 'video') {
+        surface.videoElement.play().catch(() => {});
+      }
+    }
+
+    function onMouseMove(event) {
+      if (!activeSurface || activeHandleIndex === null) return;
+      const rect = app.getBoundingClientRect();
+      let x = event.clientX - rect.left;
+      let y = event.clientY - rect.top;
+      x = Math.max(0, Math.min(width, x));
+      y = Math.max(0, Math.min(height, y));
+      const worldX = x;
+      const worldY = height - y;
+      const posAttr = activeSurface.geometry.getAttribute('position');
+      const i = activeHandleIndex * 3;
+      posAttr.array[i] = worldX;
+      posAttr.array[i + 1] = worldY;
+      posAttr.needsUpdate = true;
+      updateHomography(activeSurface);
+      const handleEl = activeSurface.handles[activeHandleIndex];
+      handleEl.style.left = x + 'px';
+      handleEl.style.top = y + 'px';
+    }
+
+    function onMouseUp() {
+      const surface = activeSurface;
+      activeSurface = null;
+      activeHandleIndex = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      if (surface && surface.currentMedia === 'effect' && surface.effectName) {
+        applyEffectToSurface(surface, surface.effectName, { force: true });
+      }
+    }
+
+    app.addEventListener('mousedown', onMouseDown);
+
+    addContentBtn.addEventListener('click', () => {
+      createSurface();
+    });
+
+    playBtn.addEventListener('click', () => {
+      surfaces.forEach(surface => {
+        surface.videoElement.play().catch(() => {});
+      });
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const now = performance.now();
+      surfaces.forEach(surface => {
+        if (surface.currentMedia === 'video' && surface.videoElement.readyState >= surface.videoElement.HAVE_CURRENT_DATA) {
+          surface.videoTexture.needsUpdate = true;
+        }
+        if (surface.currentMedia === 'effect' && surface.effectDefinition && surface.effectCtx) {
+          surface.effectDefinition.draw(surface.effectCtx, now - surface.effectStartTime);
+          if (surface.effectTexture) {
+            surface.effectTexture.needsUpdate = true;
+          }
+        }
+      });
+      renderer.render(scene, camera);
+    }
+
+    createSurface();
+    animate();
+  </script>
+</body>
+</html>
