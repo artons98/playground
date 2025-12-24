@@ -3,17 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <title>Simple Projection Mapping POC</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   <style>
+    .material-symbols-outlined {
+      display: block;
+      font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24
+    }
+  </style>
+  <style>
+    * {
+      -ms-overflow-style: none; /* IE 10+ / Edge Legacy */
+      scrollbar-width: none;    /* Firefox */
+    }
+
+    *::-webkit-scrollbar {
+      display: none;            /* Chrome, Safari, Edge */
+    }
     html, body {
         margin: 0;
         padding: 0;
         background: #111;
         color: #eee;
         font-family: system-ui, sans-serif;
-        height: 100%;
-        width: 100%;
-        max-width: 100%;
-        max-height: 100%;
+        height: 100vh;
+        width: 100vw;
+        max-width: 100vw;
+        max-height: 100vh;
         overflow: hidden;
         display: flex;
         align-items: center;
@@ -44,12 +64,12 @@
       display: none;
     }
 
-    #playHint {
+    /* #playHint {
       opacity: 0;
     }
     #playHint:hover {
       opacity: 1;
-    }
+    } */
 
     .handle {
         position: absolute;
@@ -82,7 +102,7 @@
       pointer-events: none;
     }
 
-    #playHint {
+    /* #playHint {
       position: absolute;
       right: 10px;
       bottom: 10px;
@@ -91,7 +111,7 @@
       padding: 4px 8px;
       font-size: 11px;
       border-radius: 4px;
-    }
+    } */
 
     #playBtn {
       padding: 3px 8px;
@@ -110,15 +130,18 @@
 
     #controls {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      top: 0px;
+      left: 0px;
+      padding: 1rem;
       display: flex;
       flex-direction: column;
       gap: 10px;
       align-items: stretch;
       font-size: 12px;
       max-width: 360px;
-      opacity: 0;
+      max-height: calc(100vh - 2rem);
+      overflow: hidden;
+      opacity: 1;
       transition: opacity 0.2s ease;
     }
     #controls:hover {
@@ -129,24 +152,64 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(0, 0, 0, 0.65);
+      min-height: fit-content;
+      background: rgba(0, 0, 0, 0.25);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 6px 10px;
+      padding: 0.5rem;
       border-radius: 4px;
       gap: 10px;
+      max-width: 100%;
+      overflow: hidden;
+      backdrop-filter: blur(6px);
+    }
+    #contentList{
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-width: 100%;
+      overflow: hidden;
+      overflow-y: scroll;
     }
 
     .link-all-toggle {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       font-size: 11px;
       color: #ddd;
       white-space: nowrap;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: background 0.2s ease;
     }
 
-    .link-all-toggle input {
-      margin: 0;
+    .link-all-toggle:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .history-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s ease;
+    }
+
+    .history-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .history-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
 
     .add-content-btn {
@@ -162,18 +225,21 @@
     }
 
     .control-block {
-      width: 100%;
-      background: rgba(0, 0, 0, 0.65);
+      padding: 0.5rem;
+      max-width: 100%;
+      min-height: fit-content;
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.25);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 8px 10px;
       border-radius: 4px;
+      backdrop-filter: blur(6px);
     }
 
     .control-block-header {
+      max-width: 100%;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 6px;
       gap: 8px;
     }
 
@@ -199,6 +265,7 @@
     }
 
     .control-row {
+      max-width: 100%;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -249,15 +316,6 @@
       border-color: #ff5b5b71;
     }
 
-    .control-status {
-      font-size: 11px;
-      color: #bbb;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 200px;
-    }
-
     /* Animations */
     .border-rainbow{
         animation: border-angle-rotate 2s infinite linear;
@@ -296,21 +354,28 @@
     <div id="controls">
       <div class="controls-top">
         <div class="control-title">Content blokken</div>
-        <label class="link-all-toggle" for="linkAllToggle">
-          <input type="checkbox" id="linkAllToggle" />
-          Link alle vlakken
-        </label>
-        <button id="addContentBtn" type="button" class="add-content-btn">+ Content</button>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <button id="undoBtn" type="button" class="history-btn bg-transparent p-1" aria-label="Ongedaan maken" disabled>
+            <span class="material-symbols-outlined text-light">undo</span>
+          </button>
+          <button id="redoBtn" type="button" class="history-btn bg-transparent p-1" aria-label="Opnieuw" disabled>
+            <span class="material-symbols-outlined text-light">redo</span>
+          </button>
+        <button id="linkAllToggle" type="button" class="link-all-toggle bg-transparent p-1" aria-label="Lagen koppelen" aria-pressed="false">
+          <span class="material-symbols-outlined text-light" id="linkAllIcon">link</span>
+        </button>
+        </div>
+        <button id="addContentBtn" type="button" class="add-content-btn bg-transparent p-1 rounded"><span class="material-symbols-outlined text-light">add</span></button>
       </div>
       <div id="contentList"></div>
     </div>
 
 
 
-    <div id="playHint">
+    /* <div id="playHint">
       Als de video niet speelt:
       <button id="playBtn" type="button">Play video</button>
-    </div>
+    </div> */
   </div>
 
   <!-- three.js via CDN -->
@@ -323,11 +388,16 @@
     const addContentBtn = document.getElementById('addContentBtn');
     const playBtn = document.getElementById('playBtn');
     const linkAllToggle = document.getElementById('linkAllToggle');
+    const linkAllIcon = document.getElementById('linkAllIcon');
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
 
     let width = app.clientWidth;
     let height = app.clientHeight;
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    const devicePixelRatio = Math.min(2, window.devicePixelRatio || 1);
+    renderer.setPixelRatio(devicePixelRatio);
     renderer.setSize(width, height, false);
 
     const scene = new THREE.Scene();
@@ -562,6 +632,184 @@
     const surfaceOrder = [];
     let surfaceCounter = 0;
     let linkAllSurfaces = false;
+    const HISTORY_LIMIT = 10;
+    let historyEntries = [];
+    let historyIndex = -1;
+    let historyDBPromise = null;
+    let skipHistoryPush = false;
+
+    function getHistoryDB() {
+      if (historyDBPromise) return historyDBPromise;
+      historyDBPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open('videomapping-history', 1);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains('kv')) {
+            db.createObjectStore('kv', { keyPath: 'key' });
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      return historyDBPromise;
+    }
+
+    async function readHistoryState() {
+      try {
+        const db = await getHistoryDB();
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction('kv', 'readonly');
+          const store = tx.objectStore('kv');
+          const req = store.get('history');
+          req.onsuccess = () => {
+            if (req.result && req.result.value) {
+              resolve(req.result.value);
+            } else {
+              resolve({ entries: [], index: -1 });
+            }
+          };
+          req.onerror = () => reject(req.error);
+        });
+      } catch (err) {
+        console.warn('Geschiedenis lezen mislukt:', err);
+        return { entries: [], index: -1 };
+      }
+    }
+
+    async function writeHistoryState(state) {
+      try {
+        const db = await getHistoryDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('kv', 'readwrite');
+          const store = tx.objectStore('kv');
+          store.put({ key: 'history', value: state });
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (err) {
+        console.warn('Geschiedenis opslaan mislukt:', err);
+      }
+    }
+
+    function updateHistoryButtons() {
+      if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+      if (redoBtn) redoBtn.disabled = historyIndex === -1 || historyIndex >= historyEntries.length - 1;
+    }
+
+    function serializeSurfaceForHistory(surface) {
+      const data = surface && surface.geometry ? serializeSurface(surface) : { ...(surface || {}) };
+      if (data.media === 'video' || data.media === 'image') {
+        data.media = 'color';
+        data.contentType = 'color';
+        data.videoUrl = '';
+        data.videoLabel = '';
+        data.imageUrl = '';
+        data.imageLabel = '';
+      }
+      return data;
+    }
+
+    function buildHistorySnapshot() {
+      return {
+        width,
+        height,
+        linkAllSurfaces,
+        order: [...surfaceOrder],
+        surfaces: [...surfaces.values()].map(serializeSurfaceForHistory)
+      };
+    }
+
+    async function pushHistorySnapshot(stateOverride) {
+      const snapshot = stateOverride
+        ? {
+            width: stateOverride.width,
+            height: stateOverride.height,
+            linkAllSurfaces: stateOverride.linkAllSurfaces,
+            order: Array.isArray(stateOverride.order) ? [...stateOverride.order] : [...surfaceOrder],
+            surfaces: Array.isArray(stateOverride.surfaces)
+              ? stateOverride.surfaces.map(s => serializeSurfaceForHistory(s))
+              : [...surfaces.values()].map(serializeSurfaceForHistory)
+          }
+        : buildHistorySnapshot();
+      try {
+        historyEntries = historyEntries.slice(0, historyIndex + 1);
+        historyEntries.push(snapshot);
+        while (historyEntries.length > HISTORY_LIMIT) {
+          historyEntries.shift();
+        }
+        historyIndex = historyEntries.length - 1;
+        await writeHistoryState({ entries: historyEntries, index: historyIndex });
+        updateHistoryButtons();
+      } catch (err) {
+        console.warn('Snapshot toevoegen aan geschiedenis mislukt:', err);
+      }
+    }
+
+    async function loadHistoryFromDB() {
+      if (historyEntries.length > 0) {
+        updateHistoryButtons();
+        return;
+      }
+      const state = await readHistoryState();
+      historyEntries = Array.isArray(state.entries) ? state.entries : [];
+      historyIndex = typeof state.index === 'number' ? state.index : historyEntries.length - 1;
+      updateHistoryButtons();
+    }
+
+    function applyHistorySnapshot(snapshot) {
+      if (!snapshot || !Array.isArray(snapshot.order) || !Array.isArray(snapshot.surfaces)) return;
+      const previousSaveFlag = isRestoring;
+      isRestoring = true;
+      [...surfaces.keys()].forEach(id => removeSurface(id, true));
+      surfaceOrder.length = 0;
+      linkAllSurfaces = !!snapshot.linkAllSurfaces;
+      syncLinkAllToggle();
+      snapshot.order.forEach(id => {
+        const data = snapshot.surfaces.find(s => s.id === id);
+        const s = createSurface({
+          colorHex: data && data.colorHex ? data.colorHex : DEFAULT_COLOR,
+          fitMode: data && data.fitMode ? data.fitMode : 'cover'
+        });
+        if (!s) return;
+        if (data) {
+          applySavedSurfaceData(s, data);
+        }
+      });
+      isRestoring = previousSaveFlag;
+      refreshSurfaceTitles();
+      refreshSurfaceOrdering();
+      refreshSurfaceList();
+      skipHistoryPush = true;
+      saveState();
+    }
+
+    function undoHistory() {
+      if (historyIndex <= 0) return;
+      historyIndex -= 1;
+      const snapshot = historyEntries[historyIndex];
+      applyHistorySnapshot(snapshot);
+      writeHistoryState({ entries: historyEntries, index: historyIndex });
+      updateHistoryButtons();
+    }
+
+    function redoHistory() {
+      if (historyIndex === -1 || historyIndex >= historyEntries.length - 1) return;
+      historyIndex += 1;
+      const snapshot = historyEntries[historyIndex];
+      applyHistorySnapshot(snapshot);
+      writeHistoryState({ entries: historyEntries, index: historyIndex });
+      updateHistoryButtons();
+    }
+
+    loadHistoryFromDB();
+
+    function syncLinkAllToggle() {
+      if (!linkAllToggle || !linkAllIcon) return;
+      linkAllToggle.setAttribute('aria-pressed', linkAllSurfaces ? 'true' : 'false');
+      linkAllIcon.textContent = linkAllSurfaces ? 'link_off' : 'link';
+    }
+
+    syncLinkAllToggle();
 
     function worldToDom(x, y) {
       return {
@@ -860,9 +1108,11 @@
       const norm = arr.map((v, idx) => (idx % 3 === 0 ? v / width : idx % 3 === 1 ? v / height : v));
       return {
         id: surface.id,
+        title: surface.title || '',
         positions: norm,
         colorHex: surface.colorHex,
         fitMode: surface.fitMode || 'cover',
+        contentType: surface.contentType || 'color',
         gridEnabled: surface.material.uniforms.gridEnabled.value,
         gridLines: surface.material.uniforms.gridLines.value,
         gridLineWidth: surface.material.uniforms.gridLineWidth.value,
@@ -890,6 +1140,11 @@
       } catch (err) {
         console.error('State kon niet worden opgeslagen:', err);
       }
+      if (!skipHistoryPush) {
+        void pushHistorySnapshot(state);
+      } else {
+        skipHistoryPush = false;
+      }
     }
 
     function restoreSurfaceGeometry(surface, normPositions) {
@@ -897,6 +1152,8 @@
       applyPositionsToGeometry(surface.geometry, positions);
       setHandlesFromGeometry(surface);
       updateHomography(surface);
+      surface.contentType = surface.contentType || 'color';
+      updateContentVisibility(surface);
     }
 
     function loadState() {
@@ -918,9 +1175,7 @@
       if (!parsed || !Array.isArray(parsed.order) || !Array.isArray(parsed.surfaces)) return;
 
       linkAllSurfaces = !!parsed.linkAllSurfaces;
-      if (linkAllToggle) {
-        linkAllToggle.checked = linkAllSurfaces;
-      }
+      syncLinkAllToggle();
 
       // verwijder bestaande surfaces zonder opslaan
       const previousSaveFlag = isRestoring;
@@ -946,6 +1201,8 @@
 
       refreshSurfaceTitles();
       refreshSurfaceOrdering();
+      refreshSurfaceList();
+      skipHistoryPush = true;
       saveState();
     }
 
@@ -1085,6 +1342,67 @@
       });
     }
 
+    function updateContentVisibility(surface) {
+      if (!surface.ui || !surface.ui.rows) return;
+      const type = surface.contentType || 'color';
+      const { colorRow, videoRow, imageRow, effectRow, fitRow } = surface.ui.rows;
+      if (colorRow) colorRow.style.display = type === 'color' ? '' : 'none';
+      if (videoRow) videoRow.style.display = type === 'video' ? '' : 'none';
+      if (imageRow) imageRow.style.display = type === 'image' ? '' : 'none';
+      if (effectRow) effectRow.style.display = type === 'effect' ? '' : 'none';
+      if (fitRow) fitRow.style.display = (type === 'video' || type === 'image') ? '' : 'none';
+    }
+
+    function updateGridVisibility(surface) {
+      if (!surface.ui) return;
+      const enabled = surface.ui.gridEnabled ? surface.ui.gridEnabled.checked : true;
+      if (surface.ui.gridConfig) {
+        surface.ui.gridConfig.style.display = enabled ? 'flex' : 'none';
+      }
+    }
+
+    function setSurfaceContentType(surface, type) {
+      const newType = ['video', 'image', 'color', 'effect'].includes(type) ? type : 'color';
+      if (surface.contentType === newType) {
+        updateContentVisibility(surface);
+        return;
+      }
+      surface.contentType = newType;
+      if (surface.ui && surface.ui.typeSelect) {
+        surface.ui.typeSelect.value = newType;
+      }
+
+      if (newType === 'color') {
+        if (surface.currentMedia === 'video') clearSurfaceVideo(surface);
+        if (surface.currentMedia === 'image') clearSurfaceImage(surface);
+        if (surface.currentMedia === 'effect') clearSurfaceEffect(surface, { revertToColor: false });
+        setSurfaceTexture(surface, surface.colorTexture, 'color');
+      } else if (newType === 'video') {
+        if (surface.currentMedia === 'image') clearSurfaceImage(surface);
+        if (surface.currentMedia === 'effect') clearSurfaceEffect(surface, { revertToColor: false });
+        if (surface.currentMedia !== 'video') {
+          setSurfaceTexture(surface, surface.colorTexture, 'color');
+        }
+      } else if (newType === 'image') {
+        if (surface.currentMedia === 'video') clearSurfaceVideo(surface);
+        if (surface.currentMedia === 'effect') clearSurfaceEffect(surface, { revertToColor: false });
+        if (surface.currentMedia !== 'image') {
+          setSurfaceTexture(surface, surface.colorTexture, 'color');
+        }
+      } else if (newType === 'effect') {
+        if (surface.currentMedia === 'video') clearSurfaceVideo(surface);
+        if (surface.currentMedia === 'image') clearSurfaceImage(surface);
+        if (surface.currentMedia !== 'effect') {
+          clearSurfaceEffect(surface, { revertToColor: false });
+          setSurfaceTexture(surface, surface.colorTexture, 'color');
+        }
+      }
+
+      updateContentVisibility(surface);
+      updateSurfaceStatus(surface);
+      saveState();
+    }
+
     function updateHomography(surface) {
       const posAttr = surface.geometry.getAttribute('position');
       const quad = [];
@@ -1128,16 +1446,7 @@
     }
 
     function updateSurfaceStatus(surface) {
-      if (!surface.ui || !surface.ui.status) return;
-      if (surface.currentMedia === 'video' && surface.videoLabel) {
-        surface.ui.status.textContent = `Video: ${surface.videoLabel}`;
-      } else if (surface.currentMedia === 'image' && surface.imageLabel) {
-        surface.ui.status.textContent = `Afbeelding: ${surface.imageLabel}`;
-      } else if (surface.currentMedia === 'effect' && surface.effectName) {
-        surface.ui.status.textContent = `Effect: ${surface.effectName}`;
-      } else {
-        surface.ui.status.textContent = `Kleur ${surface.colorHex}`;
-      }
+      if (!surface.ui) return;
       if (surface.ui.removeVideoBtn) {
         surface.ui.removeVideoBtn.disabled = surface.currentMedia !== 'video';
       }
@@ -1220,6 +1529,7 @@
         surface.ui.removeVideoBtn.disabled = false;
       }
       updateSurfaceStatus(surface);
+      skipHistoryPush = true;
       saveState();
     }
 
@@ -1250,6 +1560,7 @@
             surface.ui.removeImageBtn.disabled = false;
           }
           updateSurfaceStatus(surface);
+          skipHistoryPush = true;
           saveState();
         },
         undefined,
@@ -1408,6 +1719,22 @@
 
       const title = document.createElement('div');
       title.className = 'control-title';
+      title.contentEditable = 'true';
+      const initialTitle = surface.title && surface.title.trim() ? surface.title.trim() : `Content ${surfaceOrder.indexOf(surface.id) + 1}`;
+      surface.title = initialTitle;
+      title.textContent = initialTitle;
+      title.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          title.blur();
+        }
+      });
+      title.addEventListener('blur', () => {
+        const value = (title.textContent || '').trim();
+        surface.title = value || `Content ${surfaceOrder.indexOf(surface.id) + 1}`;
+        refreshSurfaceTitles();
+        saveState();
+      });
       header.appendChild(title);
 
       const headerBtns = document.createElement('div');
@@ -1417,31 +1744,66 @@
 
       const upBtn = document.createElement('button');
       upBtn.type = 'button';
-      upBtn.className = 'secondary';
-      upBtn.textContent = '↑';
+      upBtn.className = 'secondary bg-transparent p-1';
+      const upIcon = document.createElement('span');
+      upIcon.className = 'material-symbols-outlined text-light';
+      upIcon.textContent = 'arrow_upward';
+      upBtn.appendChild(upIcon);
       headerBtns.appendChild(upBtn);
 
       const downBtn = document.createElement('button');
       downBtn.type = 'button';
-      downBtn.className = 'secondary';
-      downBtn.textContent = '↓';
+      downBtn.className = 'secondary bg-transparent p-1';
+      const downIcon = document.createElement('span');
+      downIcon.className = 'material-symbols-outlined text-light';
+      downIcon.textContent = 'arrow_downward';
+      downBtn.appendChild(downIcon);
       headerBtns.appendChild(downBtn);
 
       const duplicateBtn = document.createElement('button');
       duplicateBtn.type = 'button';
-      duplicateBtn.className = 'secondary';
-      duplicateBtn.textContent = 'Dupliceer';
+      duplicateBtn.className = 'secondary bg-transparent p-1';
+      /* duplicateBtn.textContent = 'Dupliceer'; */
+      const duplicateIcon = document.createElement('span');
+      duplicateIcon.className = 'material-symbols-outlined text-light';
+      duplicateIcon.textContent = 'content_copy';
+      duplicateBtn.appendChild(duplicateIcon)
       headerBtns.appendChild(duplicateBtn);
 
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
-      removeBtn.className = 'control-remove-btn';
+      removeBtn.className = 'control-remove-btn bg-transparent p-1 ';
       removeBtn.setAttribute('aria-label', 'Verwijder content');
-      removeBtn.textContent = '×';
+      const removeIcon = document.createElement('span');
+      removeIcon.className = 'material-symbols-outlined text-light';
+      removeIcon.textContent = 'close';
+      removeBtn.appendChild(removeIcon)
       headerBtns.appendChild(removeBtn);
 
       header.appendChild(headerBtns);
       block.appendChild(header);
+
+      const typeRow = document.createElement('div');
+      typeRow.className = 'control-row';
+      const typeLabel = document.createElement('span');
+      typeLabel.className = 'control-label';
+      typeLabel.textContent = 'Content type';
+      const typeSelect = document.createElement('select');
+      const typeOptions = [
+        { value: 'video', label: 'Video' },
+        { value: 'image', label: 'Afbeelding' },
+        { value: 'color', label: 'Kleur' },
+        { value: 'effect', label: 'Animatie' }
+      ];
+      typeOptions.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        typeSelect.appendChild(option);
+      });
+      typeRow.appendChild(typeLabel);
+      typeRow.appendChild(typeSelect);
+      block.appendChild(typeRow);
 
       const colorRow = document.createElement('div');
       colorRow.className = 'control-row';
@@ -1449,13 +1811,12 @@
       colorLabel.className = 'control-label';
       colorLabel.textContent = 'Kleur';
       const colorInput = document.createElement('input');
-      colorInput.type = 'text';
-      colorInput.maxLength = 20;
-      colorInput.value = surface.colorHex;
+      colorInput.type = 'color';
+      colorInput.value = surface.colorHex !== 'transparent' ? surface.colorHex : '#ffffff';
       const applyBtn = document.createElement('button');
       applyBtn.type = 'button';
       applyBtn.className = 'secondary';
-      applyBtn.textContent = 'Pas toe';
+      applyBtn.textContent = 'Transparant';
       colorRow.appendChild(colorLabel);
       colorRow.appendChild(colorInput);
       colorRow.appendChild(applyBtn);
@@ -1541,6 +1902,10 @@
       const gridEnabled = document.createElement('input');
       gridEnabled.type = 'checkbox';
       gridEnabled.checked = true;
+      const gridConfig = document.createElement('div');
+      gridConfig.style.display = 'flex';
+      gridConfig.style.flexWrap = 'wrap';
+      gridConfig.style.gap = '6px';
       const gridLinesLabel = document.createElement('span');
       gridLinesLabel.className = 'control-label';
       gridLinesLabel.textContent = 'Lijnen';
@@ -1562,24 +1927,18 @@
       gridColorLabel.className = 'control-label';
       gridColorLabel.textContent = 'Kleur';
       const gridColor = document.createElement('input');
-      gridColor.type = 'text';
+      gridColor.type = 'color';
       gridColor.value = '#ffffff';
+      gridConfig.appendChild(gridLinesLabel);
+      gridConfig.appendChild(gridLines);
+      gridConfig.appendChild(gridWidthLabel);
+      gridConfig.appendChild(gridWidth);
+      gridConfig.appendChild(gridColorLabel);
+      gridConfig.appendChild(gridColor);
       gridRow.appendChild(gridLabel);
       gridRow.appendChild(gridEnabled);
-      gridRow.appendChild(gridLinesLabel);
-      gridRow.appendChild(gridLines);
-      gridRow.appendChild(gridWidthLabel);
-      gridRow.appendChild(gridWidth);
-      gridRow.appendChild(gridColorLabel);
-      gridRow.appendChild(gridColor);
+      gridRow.appendChild(gridConfig);
       block.appendChild(gridRow);
-
-      const statusRow = document.createElement('div');
-      statusRow.className = 'control-row';
-      const status = document.createElement('span');
-      status.className = 'control-status';
-      statusRow.appendChild(status);
-      block.appendChild(statusRow);
 
       contentList.appendChild(block);
 
@@ -1589,6 +1948,7 @@
         upBtn,
         downBtn,
         duplicateBtn,
+        typeSelect,
         fitSelect,
         colorInput,
         applyBtn,
@@ -1597,12 +1957,20 @@
         imageInput,
         removeImageBtn,
         effectSelect,
-        status,
         removeBtn,
         gridEnabled,
         gridLines,
         gridWidth,
-        gridColor
+        gridColor,
+        gridConfig,
+        rows: {
+          colorRow,
+          videoRow,
+          imageRow,
+          effectRow,
+          fitRow,
+          gridRow
+        }
       };
       if (surface.effectName) {
         effectSelect.value = surface.effectName;
@@ -1610,8 +1978,15 @@
       if (fitSelect) {
         fitSelect.value = surface.fitMode || 'cover';
       }
+      if (typeSelect) {
+        typeSelect.value = surface.contentType || 'color';
+      }
 
-      applyBtn.addEventListener('click', () => applySurfaceColor(surface, colorInput.value));
+      // ensure newly created block is in correct DOM order
+      refreshSurfaceList();
+
+      applyBtn.addEventListener('click', () => applySurfaceColor(surface, 'transparent'));
+      colorInput.addEventListener('input', () => applySurfaceColor(surface, colorInput.value));
       colorInput.addEventListener('keydown', event => {
         if (event.key === 'Enter') {
           event.preventDefault();
@@ -1632,6 +2007,9 @@
       effectSelect.addEventListener('change', event => {
         applyEffectToSurface(surface, event.target.value);
       });
+      typeSelect.addEventListener('change', event => {
+        setSurfaceContentType(surface, event.target.value);
+      });
       fitSelect.addEventListener('change', event => {
         surface.fitMode = event.target.value === 'contain' ? 'contain' : 'cover';
         updateHomography(surface);
@@ -1649,6 +2027,7 @@
       gridEnabled.addEventListener('change', () => {
         surface.material.uniforms.gridEnabled.value = gridEnabled.checked;
         surface.material.uniformsNeedUpdate = true;
+        updateGridVisibility(surface);
         saveState();
       });
       gridLines.addEventListener('input', () => {
@@ -1680,13 +2059,16 @@
       gridEnabled.checked = surface.material.uniforms.gridEnabled.value;
       gridLines.value = surface.material.uniforms.gridLines.value;
       gridWidth.value = surface.material.uniforms.gridLineWidth.value;
+      updateGridVisibility(surface);
     }
 
     function refreshSurfaceTitles() {
       surfaceOrder.forEach((id, index) => {
         const surface = surfaces.get(id);
         if (surface && surface.ui && surface.ui.title) {
-          surface.ui.title.textContent = `Content ${index + 1}`;
+          const fallback = `Content ${index + 1}`;
+          const displayTitle = surface.title && surface.title.trim() ? surface.title.trim() : fallback;
+          surface.ui.title.textContent = displayTitle;
         }
       });
     }
@@ -1700,6 +2082,19 @@
       });
     }
 
+    function refreshSurfaceList() {
+      if (!contentList) return;
+      surfaceOrder.forEach(id => {
+        const surface = surfaces.get(id);
+        if (surface && surface.ui && surface.ui.block && surface.ui.block.parentElement !== contentList) {
+          // ensure block is attached before reordering
+          contentList.appendChild(surface.ui.block);
+        } else if (surface && surface.ui && surface.ui.block) {
+          contentList.appendChild(surface.ui.block);
+        }
+      });
+    }
+
     function moveSurface(surfaceId, direction) {
       const idx = surfaceOrder.indexOf(surfaceId);
       if (idx === -1) return;
@@ -1708,11 +2103,14 @@
       swapArrayItems(surfaceOrder, idx, newIdx);
       refreshSurfaceTitles();
       refreshSurfaceOrdering();
+      refreshSurfaceList();
       saveState();
     }
 
     function applySavedSurfaceData(surface, data) {
       if (!data) return;
+      surface.contentType = data.contentType || data.media || 'color';
+      surface.title = data.title || surface.title || '';
       surface.fitMode = data.fitMode === 'contain' ? 'contain' : 'cover';
       restoreSurfaceGeometry(surface, data.positions || []);
       surface.material.uniforms.gridEnabled.value = !!data.gridEnabled;
@@ -1762,14 +2160,18 @@
 
       surface.material.uniformsNeedUpdate = true;
       if (surface.ui) {
+        if (surface.ui.typeSelect) surface.ui.typeSelect.value = surface.contentType;
+        if (surface.ui.title) surface.ui.title.textContent = surface.title && surface.title.trim() ? surface.title : surface.ui.title.textContent;
         surface.ui.fitSelect.value = surface.fitMode;
         surface.ui.gridEnabled.checked = !!data.gridEnabled;
         surface.ui.gridLines.value = data.gridLines || 10;
         surface.ui.gridWidth.value = data.gridLineWidth || 1;
         surface.ui.gridColor.value = data.gridColor || '#ffffff';
-        surface.ui.colorInput.value = data.colorHex || surface.colorHex;
+        surface.ui.colorInput.value = (data.colorHex && data.colorHex !== 'transparent') ? data.colorHex : (surface.colorHex !== 'transparent' ? surface.colorHex : '#ffffff');
         if (surface.ui.effectSelect) surface.ui.effectSelect.value = data.effectName || '';
       }
+      updateContentVisibility(surface);
+      updateGridVisibility(surface);
     }
 
     function createSurface({ colorHex, fitMode } = {}) {
@@ -1814,6 +2216,8 @@
         effectAspect: 1,
         effectBounds: null,
         fitMode: fitMode === 'contain' ? 'contain' : 'cover',
+        contentType: 'color',
+        title: '',
         ui: null
       };
 
@@ -1826,8 +2230,11 @@
       createSurfaceUI(surface);
       updateSurfaceStatus(surface);
       applyPlaceholderImage(surface);
+      updateContentVisibility(surface);
+      updateGridVisibility(surface);
       refreshSurfaceTitles();
       refreshSurfaceOrdering();
+      refreshSurfaceList();
       saveState();
       return surface;
     }
@@ -1852,6 +2259,7 @@
       }
       refreshSurfaceTitles();
       refreshSurfaceOrdering();
+      refreshSurfaceList();
       saveState();
     }
 
@@ -1890,6 +2298,7 @@
 
       refreshSurfaceTitles();
       refreshSurfaceOrdering();
+      refreshSurfaceList();
 
       if (!isRestoring) {
         saveState();
@@ -2054,9 +2463,22 @@
       createSurface();
     });
 
+
+      if (undoBtn) {
+        undoBtn.addEventListener('click', () => {
+          undoHistory();
+        });
+      }
+
+      if (redoBtn) {
+        redoBtn.addEventListener('click', () => {
+          redoHistory();
+        });
+      }
     if (linkAllToggle) {
-      linkAllToggle.addEventListener('change', () => {
-        linkAllSurfaces = linkAllToggle.checked;
+      linkAllToggle.addEventListener('click', () => {
+        linkAllSurfaces = !linkAllSurfaces;
+        syncLinkAllToggle();
         saveState();
       });
     }
@@ -2070,6 +2492,8 @@
     window.addEventListener('resize', () => {
       width = app.clientWidth;
       height = app.clientHeight;
+      const devicePixelRatio = Math.min(2, window.devicePixelRatio || 1);
+      renderer.setPixelRatio(devicePixelRatio);
       renderer.setSize(width, height, false);
       surfaces.forEach(surface => {
         updateHomography(surface);
