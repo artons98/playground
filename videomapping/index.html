@@ -136,6 +136,19 @@
       gap: 10px;
     }
 
+    .link-all-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #ddd;
+      white-space: nowrap;
+    }
+
+    .link-all-toggle input {
+      margin: 0;
+    }
+
     .add-content-btn {
       padding: 3px 8px;
       font-size: 11px;
@@ -283,6 +296,10 @@
     <div id="controls">
       <div class="controls-top">
         <div class="control-title">Content blokken</div>
+        <label class="link-all-toggle" for="linkAllToggle">
+          <input type="checkbox" id="linkAllToggle" />
+          Link alle vlakken
+        </label>
         <button id="addContentBtn" type="button" class="add-content-btn">+ Content</button>
       </div>
       <div id="contentList"></div>
@@ -305,6 +322,7 @@
     const contentList = document.getElementById('contentList');
     const addContentBtn = document.getElementById('addContentBtn');
     const playBtn = document.getElementById('playBtn');
+    const linkAllToggle = document.getElementById('linkAllToggle');
 
     let width = app.clientWidth;
     let height = app.clientHeight;
@@ -316,7 +334,7 @@
     scene.background = new THREE.Color(0x000000);
     const textureLoader = new THREE.TextureLoader();
 
-    const PLACEHOLDER_IMAGE = 'test.webp';
+    const PLACEHOLDER_IMAGE = '';
     let sharedPlaceholderTexture = null;
     let placeholderLoadStarted = false;
     let placeholderLoadFailed = false;
@@ -356,11 +374,15 @@
 
     const EFFECT_OPTIONS = [
       { value: '', label: 'Geen effect' },
-      { value: 'border-rainbow', label: 'Border Rainbow' }
+      { value: 'border-rainbow-8', label: 'Border Rainbow 8px' },
+      { value: 'border-rainbow-16', label: 'Border Rainbow 16px' },
+      { value: 'border-rainbow-32', label: 'Border Rainbow 32px' },
+      { value: 'border-rainbow-64', label: 'Border Rainbow 64px' }
+
     ];
 
     const EFFECT_DEFINITIONS = {
-      'border-rainbow': {
+      'border-rainbow-8': {
         size: 5120,
         draw(ctx, time) {
           const { width } = ctx.canvas;
@@ -369,7 +391,7 @@
           const minDim = Math.min(width, height);
           ctx.clearRect(0, 0, width, height);
           let gradient;
-          const rotation = (time * 0.0005) % (Math.PI * 2);
+          const rotation = (time * 0.001) % (Math.PI * 2);
           if (typeof ctx.createConicGradient === 'function') {
             gradient = ctx.createConicGradient(rotation, width / 2, height / 2);
           } else {
@@ -382,22 +404,136 @@
           gradient.addColorStop(0.67, '#53f3d3');
           gradient.addColorStop(0.83, '#f6d365');
           gradient.addColorStop(1.0, '#ff5f6d');
-          ctx.fillStyle = '#000';
+          ctx.fillStyle = 'transparent';
           ctx.fillRect(0, 0, width, height);
           ctx.strokeStyle = gradient;
           ctx.lineWidth = Math.min(borderWidthPx, width * 0.15);
           ctx.lineCap = 'round';
-          const inset = minDim * 0.075;
+          const inset = minDim * 0.00;
           const rectWidth = Math.max(0, width - inset * 2);
           const rectHeight = Math.max(0, height - inset * 2);
           ctx.strokeRect(inset, inset, rectWidth, rectHeight);
-          ctx.fillStyle = 'rgba(0,0,0,0.7)';
-          const innerInset = minDim * 0.2;
+          ctx.fillStyle = 'rgba(0,0,0,0.0)';
+          const innerInset = minDim * 0.0;
           const innerWidth = Math.max(0, width - innerInset * 2);
           const innerHeight = Math.max(0, height - innerInset * 2);
           ctx.fillRect(innerInset, innerInset, innerWidth, innerHeight);
         }
-      }
+      },
+      'border-rainbow-16': {
+          size: 5120,
+          draw(ctx, time) {
+            const { width } = ctx.canvas;
+            const height = ctx.canvas.height;
+            const borderWidthPx = 16;
+            const minDim = Math.min(width, height);
+            ctx.clearRect(0, 0, width, height);
+            let gradient;
+            const rotation = (time * 0.001) % (Math.PI * 2);
+            if (typeof ctx.createConicGradient === 'function') {
+              gradient = ctx.createConicGradient(rotation, width / 2, height / 2);
+            } else {
+              gradient = ctx.createLinearGradient(0, 0, width, height);
+            }
+            gradient.addColorStop(0.0, '#ff5f6d');
+            gradient.addColorStop(0.17, '#ffc371');
+            gradient.addColorStop(0.33, '#47c6ff');
+            gradient.addColorStop(0.5, '#ac6cff');
+            gradient.addColorStop(0.67, '#53f3d3');
+            gradient.addColorStop(0.83, '#f6d365');
+            gradient.addColorStop(1.0, '#ff5f6d');
+            ctx.fillStyle = 'transparent';
+            ctx.fillRect(0, 0, width, height);
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = Math.min(borderWidthPx, width * 0.15);
+            ctx.lineCap = 'round';
+            const inset = minDim * 0.00;
+            const rectWidth = Math.max(0, width - inset * 2);
+            const rectHeight = Math.max(0, height - inset * 2);
+            ctx.strokeRect(inset, inset, rectWidth, rectHeight);
+            ctx.fillStyle = 'rgba(0,0,0,0.0)';
+            const innerInset = minDim * 0.0;
+            const innerWidth = Math.max(0, width - innerInset * 2);
+            const innerHeight = Math.max(0, height - innerInset * 2);
+            ctx.fillRect(innerInset, innerInset, innerWidth, innerHeight);
+          }
+        },
+      'border-rainbow-32': {
+          size: 5120,
+          draw(ctx, time) {
+            const { width } = ctx.canvas;
+            const height = ctx.canvas.height;
+            const borderWidthPx = 32;
+            const minDim = Math.min(width, height);
+            ctx.clearRect(0, 0, width, height);
+            let gradient;
+            const rotation = (time * 0.001) % (Math.PI * 2);
+            if (typeof ctx.createConicGradient === 'function') {
+              gradient = ctx.createConicGradient(rotation, width / 2, height / 2);
+            } else {
+              gradient = ctx.createLinearGradient(0, 0, width, height);
+            }
+            gradient.addColorStop(0.0, '#ff5f6d');
+            gradient.addColorStop(0.17, '#ffc371');
+            gradient.addColorStop(0.33, '#47c6ff');
+            gradient.addColorStop(0.5, '#ac6cff');
+            gradient.addColorStop(0.67, '#53f3d3');
+            gradient.addColorStop(0.83, '#f6d365');
+            gradient.addColorStop(1.0, '#ff5f6d');
+            ctx.fillStyle = 'transparent';
+            ctx.fillRect(0, 0, width, height);
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = Math.min(borderWidthPx, width * 0.15);
+            ctx.lineCap = 'round';
+            const inset = minDim * 0.00;
+            const rectWidth = Math.max(0, width - inset * 2);
+            const rectHeight = Math.max(0, height - inset * 2);
+            ctx.strokeRect(inset, inset, rectWidth, rectHeight);
+            ctx.fillStyle = 'rgba(0,0,0,0.0)';
+            const innerInset = minDim * 0.0;
+            const innerWidth = Math.max(0, width - innerInset * 2);
+            const innerHeight = Math.max(0, height - innerInset * 2);
+            ctx.fillRect(innerInset, innerInset, innerWidth, innerHeight);
+          }
+        },
+      'border-rainbow-64': {
+          size: 5120,
+          draw(ctx, time) {
+            const { width } = ctx.canvas;
+            const height = ctx.canvas.height;
+            const borderWidthPx = 64;
+            const minDim = Math.min(width, height);
+            ctx.clearRect(0, 0, width, height);
+            let gradient;
+            const rotation = (time * 0.001) % (Math.PI * 2);
+            if (typeof ctx.createConicGradient === 'function') {
+              gradient = ctx.createConicGradient(rotation, width / 2, height / 2);
+            } else {
+              gradient = ctx.createLinearGradient(0, 0, width, height);
+            }
+            gradient.addColorStop(0.0, '#ff5f6d');
+            gradient.addColorStop(0.17, '#ffc371');
+            gradient.addColorStop(0.33, '#47c6ff');
+            gradient.addColorStop(0.5, '#ac6cff');
+            gradient.addColorStop(0.67, '#53f3d3');
+            gradient.addColorStop(0.83, '#f6d365');
+            gradient.addColorStop(1.0, '#ff5f6d');
+            ctx.fillStyle = 'transparent';
+            ctx.fillRect(0, 0, width, height);
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = Math.min(borderWidthPx, width * 0.15);
+            ctx.lineCap = 'round';
+            const inset = minDim * 0.00;
+            const rectWidth = Math.max(0, width - inset * 2);
+            const rectHeight = Math.max(0, height - inset * 2);
+            ctx.strokeRect(inset, inset, rectWidth, rectHeight);
+            ctx.fillStyle = 'rgba(0,0,0,0.0)';
+            const innerInset = minDim * 0.0;
+            const innerWidth = Math.max(0, width - innerInset * 2);
+            const innerHeight = Math.max(0, height - innerInset * 2);
+            ctx.fillRect(innerInset, innerInset, innerWidth, innerHeight);
+          }
+        }
     };
 
     const camera = new THREE.OrthographicCamera(
@@ -418,11 +554,14 @@
     ];
 
     const BASE_COLOR_PALETTE = ['#00c8ff', '#ff5470', '#facc15', '#34d399', '#c084fc', '#f97316'];
-    const DEFAULT_COLOR = '#00c8ff';
+    const DEFAULT_COLOR = 'transparent';
+    const STORAGE_KEY = 'videomapping_state_v1';
+    let isRestoring = false;
 
     const surfaces = new Map();
     const surfaceOrder = [];
     let surfaceCounter = 0;
+    let linkAllSurfaces = false;
 
     function worldToDom(x, y) {
       return {
@@ -458,7 +597,13 @@
       return new THREE.ShaderMaterial({
         uniforms: {
           map: { value: initialTexture },
-          homography: { value: matrix }
+          homography: { value: matrix },
+          gridEnabled: { value: true },
+          gridLines: { value: 10 },
+          gridLineWidth: { value: 3 },
+          gridColor: { value: new THREE.Color(0xffffff) },
+          surfaceWidth: { value: 1 },
+          surfaceHeight: { value: 1 }
         },
         vertexShader: `
           varying vec2 vWorld;
@@ -470,6 +615,12 @@
         fragmentShader: `
           uniform sampler2D map;
           uniform mat3 homography;
+          uniform bool gridEnabled;
+          uniform float gridLines;
+          uniform float gridLineWidth;
+          uniform vec3 gridColor;
+          uniform float surfaceWidth;
+          uniform float surfaceHeight;
           varying vec2 vWorld;
 
           void main() {
@@ -480,7 +631,25 @@
             if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
               discard;
             }
-            gl_FragColor = texture2D(map, uv);
+            vec4 texColor = texture2D(map, uv);
+            if (gridEnabled) {
+              float lines = max(gridLines, 1.0);
+              float spacingU = 1.0 / lines;
+              float spacingV = 1.0 / lines;
+              float posU = mod(uv.x, spacingU);
+              float posV = mod(uv.y, spacingV);
+              float distU = min(posU, spacingU - posU);
+              float distV = min(posV, spacingV - posV);
+              float minSpacing = min(spacingU, spacingV);
+              float halfW = minSpacing * 0.49;
+              float userHalfW = (max(gridLineWidth, 0.0) / 100.0) * minSpacing;
+              halfW = min(halfW, userHalfW);
+              if (distU <= halfW || distV <= halfW) {
+                gl_FragColor = vec4(gridColor, 1.0);
+                return;
+              }
+            }
+            gl_FragColor = texColor;
           }
         `,
         side: THREE.DoubleSide,
@@ -493,6 +662,7 @@
 
     function normalizeHex(value) {
       if (!value) return null;
+      if (value.trim().toLowerCase() === 'transparent') return 'transparent';
       const hex = value.trim().replace(/^#/, '');
       if (/^[0-9a-fA-F]{6}$/.test(hex)) {
         return `#${hex.toLowerCase()}`;
@@ -501,6 +671,12 @@
     }
 
     function createColorTexture(hex) {
+      if (hex === 'transparent') {
+        const data = new Uint8Array([0, 0, 0, 0]);
+        const texture = new THREE.DataTexture(data, 1, 1, THREE.RGBAFormat);
+        texture.needsUpdate = true;
+        return texture;
+      }
       const color = new THREE.Color(hex);
       const data = new Uint8Array([
         Math.round(color.r * 255),
@@ -548,6 +724,78 @@
       posAttr.needsUpdate = true;
     }
 
+    function applyPositionsToGeometry(geometry, positions) {
+      const posAttr = geometry.getAttribute('position');
+      const arr = posAttr.array;
+      for (let i = 0; i < 12 && i < positions.length; i++) {
+        arr[i] = positions[i];
+      }
+      posAttr.needsUpdate = true;
+    }
+
+    function positionsToQuad(arr) {
+      return [
+        { x: arr[0], y: arr[1] },
+        { x: arr[3], y: arr[4] },
+        { x: arr[6], y: arr[7] },
+        { x: arr[9], y: arr[10] }
+      ];
+    }
+
+    function swapArrayItems(arr, i, j) {
+      const tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+
+    function toScreenPoint(pt) {
+      return { x: pt.x, y: height - pt.y };
+    }
+
+    function pointInQuad(screenQuad, px, py) {
+      let inside = false;
+      for (let i = 0, j = screenQuad.length - 1; i < screenQuad.length; j = i++) {
+        const xi = screenQuad[i].x;
+        const yi = screenQuad[i].y;
+        const xj = screenQuad[j].x;
+        const yj = screenQuad[j].y;
+        const intersect = ((yi > py) !== (yj > py)) && (px < ((xj - xi) * (py - yi)) / (yj - yi + 1e-9) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function pickSurfaceAtScreen(px, py) {
+      for (let idx = surfaceOrder.length - 1; idx >= 0; idx--) {
+        const id = surfaceOrder[idx];
+        const surface = surfaces.get(id);
+        if (!surface) continue;
+        const posAttr = surface.geometry.getAttribute('position');
+        const quad = positionsToQuad(posAttr.array);
+        const screenQuad = quad.map(toScreenPoint);
+        if (pointInQuad(screenQuad, px, py)) {
+          return surface;
+        }
+      }
+      return null;
+    }
+
+    function applyHomographyToPositions(solution, positions) {
+      const h = solution;
+      const out = new Float32Array(positions.length);
+      for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i];
+        const y = positions[i + 1];
+        const w = h[6] * x + h[7] * y + 1;
+        const nx = (h[0] * x + h[1] * y + h[2]) / w;
+        const ny = (h[3] * x + h[4] * y + h[5]) / w;
+        out[i] = nx;
+        out[i + 1] = ny;
+        out[i + 2] = 0;
+      }
+      return out;
+    }
+
     function createBaseGeometry(rect) {
       const geometry = new THREE.BufferGeometry();
       const positions = new Float32Array(12);
@@ -591,6 +839,140 @@
         height: boundsHeight,
         aspect: boundsWidth / boundsHeight
       };
+    }
+
+    function serializeSurface(surface) {
+      const posAttr = surface.geometry.getAttribute('position');
+      const arr = Array.from(posAttr.array);
+      const norm = arr.map((v, idx) => (idx % 3 === 0 ? v / width : idx % 3 === 1 ? v / height : v));
+      return {
+        id: surface.id,
+        positions: norm,
+        colorHex: surface.colorHex,
+        gridEnabled: surface.material.uniforms.gridEnabled.value,
+        gridLines: surface.material.uniforms.gridLines.value,
+        gridLineWidth: surface.material.uniforms.gridLineWidth.value,
+        gridColor: `#${surface.material.uniforms.gridColor.value.getHexString()}`,
+        media: surface.currentMedia,
+        effectName: surface.effectName || '',
+        imageUrl: surface.currentImageUrl || '',
+        imageLabel: surface.imageLabel || '',
+        videoUrl: surface.currentVideoUrl || '',
+        videoLabel: surface.videoLabel || ''
+      };
+    }
+
+    function saveState() {
+      if (isRestoring) return;
+      const state = {
+        width,
+        height,
+        linkAllSurfaces,
+        order: [...surfaceOrder],
+        surfaces: [...surfaces.values()].map(serializeSurface)
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (err) {
+        console.error('State kon niet worden opgeslagen:', err);
+      }
+    }
+
+    function restoreSurfaceGeometry(surface, normPositions) {
+      const positions = normPositions.map((v, idx) => (idx % 3 === 0 ? v * width : idx % 3 === 1 ? v * height : v));
+      applyPositionsToGeometry(surface.geometry, positions);
+      setHandlesFromGeometry(surface);
+      updateHomography(surface);
+    }
+
+    function loadState() {
+      let raw;
+      try {
+        raw = localStorage.getItem(STORAGE_KEY);
+      } catch (err) {
+        console.error('State kon niet worden gelezen:', err);
+        return;
+      }
+      if (!raw) return;
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (err) {
+        console.error('State parsing mislukt:', err);
+        return;
+      }
+      if (!parsed || !Array.isArray(parsed.order) || !Array.isArray(parsed.surfaces)) return;
+
+      linkAllSurfaces = !!parsed.linkAllSurfaces;
+      if (linkAllToggle) {
+        linkAllToggle.checked = linkAllSurfaces;
+      }
+
+      // verwijder bestaande surfaces zonder opslaan
+      const previousSaveFlag = isRestoring;
+      isRestoring = true;
+      [...surfaces.keys()].forEach(id => removeSurface(id, true));
+      isRestoring = previousSaveFlag;
+
+      surfaceOrder.length = 0;
+
+      isRestoring = true;
+      parsed.order.forEach(id => {
+        const data = parsed.surfaces.find(s => s.id === id);
+        const s = createSurface({ colorHex: data && data.colorHex ? data.colorHex : DEFAULT_COLOR });
+        if (!s) return;
+        if (data) {
+          applySavedSurfaceData(s, data);
+        }
+      });
+      isRestoring = false;
+
+      refreshSurfaceTitles();
+      refreshSurfaceOrdering();
+      saveState();
+    }
+
+    function calculateTargetUVs(surface) {
+      if (!surface.currentTexture || surface.currentMedia === 'color') {
+        return [
+          { u: 0, v: 1 },
+          { u: 1, v: 1 },
+          { u: 0, v: 0 },
+          { u: 1, v: 0 }
+        ];
+      }
+      const texture = surface.currentTexture;
+      if (!texture.image) {
+        return [
+          { u: 0, v: 1 },
+          { u: 1, v: 1 },
+          { u: 0, v: 0 },
+          { u: 1, v: 0 }
+        ];
+      }
+      const textureAspect = texture.image.width / texture.image.height;
+      const bounds = getSurfaceBounds(surface);
+      const surfaceAspect = bounds.aspect;
+      let uMin = 0, uMax = 1, vMin = 0, vMax = 1;
+      if (surfaceAspect > textureAspect) {
+        // Oppervlak is breder: horizontaal bijsnijden, schaal U
+        const scale = surfaceAspect / textureAspect;
+        uMin = (1 - scale) / 2;
+        uMax = uMin + scale;
+        // vMin = 0, vMax = 1
+      } else {
+        // Oppervlak is hoger: verticaal bijsnijden, schaal V
+        const scale = textureAspect / surfaceAspect;
+        vMin = (1 - scale) / 2;
+        vMax = vMin + scale;
+        // uMin = 0, uMax = 1
+      }
+      return [
+        { u: uMin, v: vMax },
+        { u: uMax, v: vMax },
+        { u: uMin, v: vMin },
+        { u: uMax, v: vMin }
+      ];
     }
 
     function solveHomography(src, dst) {
@@ -644,6 +1026,11 @@
       return augmented.map(row => row[size]);
     }
 
+    function solveHomographyQuadToQuad(srcQuad, dstQuad) {
+      const dst = dstQuad.map(pt => ({ u: pt.x, v: pt.y }));
+      return solveHomography(srcQuad, dst);
+    }
+
     function createHandleElement(surfaceId, index) {
       const handle = document.createElement('div');
       handle.className = 'handle';
@@ -674,6 +1061,7 @@
         const base = i * 3;
         quad.push({ x: posAttr.array[base], y: posAttr.array[base + 1] });
       }
+      const targetUVs = calculateTargetUVs(surface);
       const solution = solveHomography(quad, targetUVs);
       if (!solution) return;
       surface.homography.set(
@@ -681,6 +1069,9 @@
         solution[3], solution[4], solution[5],
         solution[6], solution[7], 1
       );
+      const bounds = getSurfaceBounds(surface);
+      surface.material.uniforms.surfaceWidth.value = bounds.width;
+      surface.material.uniforms.surfaceHeight.value = bounds.height;
       surface.material.uniformsNeedUpdate = true;
     }
 
@@ -690,6 +1081,7 @@
       surface.currentMedia = mode;
       surface.material.needsUpdate = true;
       surface.material.uniformsNeedUpdate = true;
+      updateHomography(surface);
     }
 
     function updateSurfaceStatus(surface) {
@@ -776,6 +1168,7 @@
         surface.videoTexture.format = THREE.RGBAFormat;
         surface.videoTexture.premultiplyAlpha = false;
         surface.videoTexture.needsUpdate = true;
+        updateHomography(surface);
       }, { once: true });
       surface.videoElement.play().catch(err => console.error('Kon video niet starten:', err));
       surface.videoLabel = file.name;
@@ -784,6 +1177,7 @@
         surface.ui.removeVideoBtn.disabled = false;
       }
       updateSurfaceStatus(surface);
+      saveState();
     }
 
     function handleSurfaceImageSelection(surface, file) {
@@ -813,6 +1207,7 @@
             surface.ui.removeImageBtn.disabled = false;
           }
           updateSurfaceStatus(surface);
+          saveState();
         },
         undefined,
         error => {
@@ -910,10 +1305,11 @@
         surface.ui.effectSelect.value = effectName;
       }
       updateSurfaceStatus(surface);
+      saveState();
     }
 
     function applyPlaceholderImage(surface) {
-      if (placeholderLoadFailed) return;
+      if (placeholderLoadFailed || isRestoring) return;
       onPlaceholderReady(texture => {
         if (!surfaces.has(surface.id)) return;
         if (surface.currentMedia !== 'color') return;
@@ -956,6 +1352,7 @@
         previousTexture.dispose();
       }
       updateSurfaceStatus(surface);
+      saveState();
     }
 
     function createSurfaceUI(surface) {
@@ -965,16 +1362,42 @@
 
       const header = document.createElement('div');
       header.className = 'control-block-header';
+
       const title = document.createElement('div');
       title.className = 'control-title';
       header.appendChild(title);
+
+      const headerBtns = document.createElement('div');
+      headerBtns.style.display = 'flex';
+      headerBtns.style.gap = '6px';
+      headerBtns.style.alignItems = 'center';
+
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.className = 'secondary';
+      upBtn.textContent = '↑';
+      headerBtns.appendChild(upBtn);
+
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.className = 'secondary';
+      downBtn.textContent = '↓';
+      headerBtns.appendChild(downBtn);
+
+      const duplicateBtn = document.createElement('button');
+      duplicateBtn.type = 'button';
+      duplicateBtn.className = 'secondary';
+      duplicateBtn.textContent = 'Dupliceer';
+      headerBtns.appendChild(duplicateBtn);
 
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'control-remove-btn';
       removeBtn.setAttribute('aria-label', 'Verwijder content');
       removeBtn.textContent = '×';
-      header.appendChild(removeBtn);
+      headerBtns.appendChild(removeBtn);
+
+      header.appendChild(headerBtns);
       block.appendChild(header);
 
       const colorRow = document.createElement('div');
@@ -984,7 +1407,7 @@
       colorLabel.textContent = 'Kleur';
       const colorInput = document.createElement('input');
       colorInput.type = 'text';
-      colorInput.maxLength = 7;
+      colorInput.maxLength = 20;
       colorInput.value = surface.colorHex;
       const applyBtn = document.createElement('button');
       applyBtn.type = 'button';
@@ -1047,6 +1470,47 @@
       effectRow.appendChild(effectSelect);
       block.appendChild(effectRow);
 
+      const gridRow = document.createElement('div');
+      gridRow.className = 'control-row';
+      const gridLabel = document.createElement('span');
+      gridLabel.className = 'control-label';
+      gridLabel.textContent = 'Grid';
+      const gridEnabled = document.createElement('input');
+      gridEnabled.type = 'checkbox';
+      gridEnabled.checked = true;
+      const gridLinesLabel = document.createElement('span');
+      gridLinesLabel.className = 'control-label';
+      gridLinesLabel.textContent = 'Lijnen';
+      const gridLines = document.createElement('input');
+      gridLines.type = 'number';
+      gridLines.value = 10;
+      gridLines.min = 1;
+      gridLines.max = 200;
+      const gridWidthLabel = document.createElement('span');
+      gridWidthLabel.className = 'control-label';
+      gridWidthLabel.textContent = 'Dikte';
+      const gridWidth = document.createElement('input');
+      gridWidth.type = 'number';
+      gridWidth.value = 3;
+      gridWidth.min = 0.5;
+      gridWidth.max = 50;
+      gridWidth.step = 0.5;
+      const gridColorLabel = document.createElement('span');
+      gridColorLabel.className = 'control-label';
+      gridColorLabel.textContent = 'Kleur';
+      const gridColor = document.createElement('input');
+      gridColor.type = 'text';
+      gridColor.value = '#ffffff';
+      gridRow.appendChild(gridLabel);
+      gridRow.appendChild(gridEnabled);
+      gridRow.appendChild(gridLinesLabel);
+      gridRow.appendChild(gridLines);
+      gridRow.appendChild(gridWidthLabel);
+      gridRow.appendChild(gridWidth);
+      gridRow.appendChild(gridColorLabel);
+      gridRow.appendChild(gridColor);
+      block.appendChild(gridRow);
+
       const statusRow = document.createElement('div');
       statusRow.className = 'control-row';
       const status = document.createElement('span');
@@ -1059,6 +1523,9 @@
       surface.ui = {
         block,
         title,
+        upBtn,
+        downBtn,
+        duplicateBtn,
         colorInput,
         applyBtn,
         videoInput,
@@ -1067,7 +1534,11 @@
         removeImageBtn,
         effectSelect,
         status,
-        removeBtn
+        removeBtn,
+        gridEnabled,
+        gridLines,
+        gridWidth,
+        gridColor
       };
       if (surface.effectName) {
         effectSelect.value = surface.effectName;
@@ -1094,7 +1565,49 @@
       effectSelect.addEventListener('change', event => {
         applyEffectToSurface(surface, event.target.value);
       });
+      upBtn.addEventListener('click', () => moveSurface(surface.id, -1));
+      downBtn.addEventListener('click', () => moveSurface(surface.id, 1));
+      duplicateBtn.addEventListener('click', () => duplicateSurface(surface.id));
       removeBtn.addEventListener('click', () => removeSurface(surface.id));
+
+      // init grid defaults
+      surface.material.uniforms.gridEnabled.value = true;
+      surface.material.uniformsNeedUpdate = true;
+
+      gridEnabled.addEventListener('change', () => {
+        surface.material.uniforms.gridEnabled.value = gridEnabled.checked;
+        surface.material.uniformsNeedUpdate = true;
+        saveState();
+      });
+      gridLines.addEventListener('input', () => {
+        const value = parseFloat(gridLines.value) || 10;
+        surface.material.uniforms.gridLines.value = Math.max(1, value);
+        surface.material.uniformsNeedUpdate = true;
+        saveState();
+      });
+      gridWidth.addEventListener('input', () => {
+        const value = parseFloat(gridWidth.value) || 3;
+        surface.material.uniforms.gridLineWidth.value = Math.max(0, value);
+        surface.material.uniformsNeedUpdate = true;
+        saveState();
+      });
+      gridColor.addEventListener('input', () => {
+        const color = new THREE.Color(gridColor.value);
+        surface.material.uniforms.gridColor.value = color;
+        surface.material.uniformsNeedUpdate = true;
+        saveState();
+      });
+      gridColor.addEventListener('blur', () => {
+        const color = new THREE.Color(gridColor.value);
+        surface.material.uniforms.gridColor.value = color;
+        surface.material.uniformsNeedUpdate = true;
+        saveState();
+      });
+
+      // initial UI values sync
+      gridEnabled.checked = surface.material.uniforms.gridEnabled.value;
+      gridLines.value = surface.material.uniforms.gridLines.value;
+      gridWidth.value = surface.material.uniforms.gridLineWidth.value;
     }
 
     function refreshSurfaceTitles() {
@@ -1115,11 +1628,81 @@
       });
     }
 
+    function moveSurface(surfaceId, direction) {
+      const idx = surfaceOrder.indexOf(surfaceId);
+      if (idx === -1) return;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= surfaceOrder.length) return;
+      swapArrayItems(surfaceOrder, idx, newIdx);
+      refreshSurfaceTitles();
+      refreshSurfaceOrdering();
+      saveState();
+    }
+
+    function applySavedSurfaceData(surface, data) {
+      if (!data) return;
+      restoreSurfaceGeometry(surface, data.positions || []);
+      surface.material.uniforms.gridEnabled.value = !!data.gridEnabled;
+      surface.material.uniforms.gridLines.value = Math.max(1, data.gridLines || 10);
+      surface.material.uniforms.gridLineWidth.value = Math.max(0, data.gridLineWidth || 1);
+      if (data.gridColor) {
+        surface.material.uniforms.gridColor.value = new THREE.Color(data.gridColor);
+      }
+
+      if (data.media === 'effect' && data.effectName) {
+        applyEffectToSurface(surface, data.effectName, { force: true });
+      } else if (data.media === 'image' && data.imageUrl) {
+        surface.currentImageUrl = data.imageUrl;
+        surface.imageLabel = data.imageLabel || '';
+        textureLoader.load(
+          data.imageUrl,
+          texture => {
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            surface.imageTexture = texture;
+            setSurfaceTexture(surface, texture, 'image');
+            updateSurfaceStatus(surface);
+            if (surface.ui) {
+              surface.ui.imageInput.value = '';
+            }
+          },
+          undefined,
+          () => {}
+        );
+      } else if (data.media === 'video' && data.videoUrl) {
+        surface.currentVideoUrl = data.videoUrl;
+        surface.videoLabel = data.videoLabel || '';
+        surface.videoElement.pause();
+        surface.videoElement.src = data.videoUrl;
+        surface.videoElement.load();
+        surface.videoElement.addEventListener('loadeddata', () => {
+          surface.videoTexture.format = THREE.RGBAFormat;
+          surface.videoTexture.premultiplyAlpha = false;
+          surface.videoTexture.needsUpdate = true;
+          setSurfaceTexture(surface, surface.videoTexture, 'video');
+          updateSurfaceStatus(surface);
+        }, { once: true });
+        surface.videoElement.play().catch(() => {});
+      } else {
+        setSurfaceTexture(surface, surface.colorTexture, 'color');
+      }
+
+      surface.material.uniformsNeedUpdate = true;
+      if (surface.ui) {
+        surface.ui.gridEnabled.checked = !!data.gridEnabled;
+        surface.ui.gridLines.value = data.gridLines || 10;
+        surface.ui.gridWidth.value = data.gridLineWidth || 1;
+        surface.ui.gridColor.value = data.gridColor || '#ffffff';
+        surface.ui.colorInput.value = data.colorHex || surface.colorHex;
+        if (surface.ui.effectSelect) surface.ui.effectSelect.value = data.effectName || '';
+      }
+    }
+
     function createSurface({ colorHex } = {}) {
       const id = `surface-${++surfaceCounter}`;
       const videoElement = createVideoElement();
       const videoTexture = createVideoTexture(videoElement);
-      const paletteColor = colorHex || getDefaultColor(surfaceOrder.length);
+      const paletteColor = colorHex || DEFAULT_COLOR;
       const normalizedColor = normalizeHex(paletteColor) || DEFAULT_COLOR;
       const colorTexture = createColorTexture(normalizedColor);
       const geometry = createBaseGeometry(getCenteredRect());
@@ -1170,10 +1753,34 @@
       applyPlaceholderImage(surface);
       refreshSurfaceTitles();
       refreshSurfaceOrdering();
+      saveState();
       return surface;
     }
 
-    function removeSurface(surfaceId) {
+    function duplicateSurface(surfaceId) {
+      const source = surfaces.get(surfaceId);
+      if (!source) return;
+      const data = serializeSurface(source);
+      const previousSaveFlag = isRestoring;
+      isRestoring = true;
+      const clone = createSurface({ colorHex: data && data.colorHex ? data.colorHex : DEFAULT_COLOR });
+      isRestoring = previousSaveFlag;
+      if (!clone) return;
+      applySavedSurfaceData(clone, data);
+      const srcIdx = surfaceOrder.indexOf(surfaceId);
+      if (srcIdx !== -1) {
+        const cloneIdx = surfaceOrder.indexOf(clone.id);
+        if (cloneIdx !== -1) {
+          surfaceOrder.splice(cloneIdx, 1);
+        }
+        surfaceOrder.splice(srcIdx + 1, 0, clone.id);
+      }
+      refreshSurfaceTitles();
+      refreshSurfaceOrdering();
+      saveState();
+    }
+
+    function removeSurface(surfaceId, skipFallback) {
       const surface = surfaces.get(surfaceId);
       if (!surface) return;
       if (surface === activeSurface) {
@@ -1209,34 +1816,26 @@
       refreshSurfaceTitles();
       refreshSurfaceOrdering();
 
-      if (surfaceOrder.length === 0) {
-        createSurface();
+      if (!isRestoring) {
+        saveState();
+        if (!skipFallback && surfaceOrder.length === 0) {
+          createSurface();
+        }
       }
     }
 
     let activeSurface = null;
     let activeHandleIndex = null;
+    let dragStartActivePositions = null;
+    let dragStartActiveQuad = null;
+    let dragStartAllPositions = null;
+    let dragMode = null; // 'handle' of 'whole'
+    let dragStartPointer = null;
 
     function onMouseDown(event) {
       const target = event.target;
-      if (!target.classList.contains('handle')) return;
-      const surfaceId = target.dataset.surface;
-      const surface = surfaces.get(surfaceId);
-      if (!surface) return;
+      if (target.closest('#controls')) return;
 
-      event.preventDefault();
-      activeSurface = surface;
-      activeHandleIndex = parseInt(target.dataset.index, 10);
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-
-      if (surface.currentMedia === 'video') {
-        surface.videoElement.play().catch(() => {});
-      }
-    }
-
-    function onMouseMove(event) {
-      if (!activeSurface || activeHandleIndex === null) return;
       const rect = app.getBoundingClientRect();
       let x = event.clientX - rect.left;
       let y = event.clientY - rect.top;
@@ -1244,25 +1843,133 @@
       y = Math.max(0, Math.min(height, y));
       const worldX = x;
       const worldY = height - y;
-      const posAttr = activeSurface.geometry.getAttribute('position');
-      const i = activeHandleIndex * 3;
-      posAttr.array[i] = worldX;
-      posAttr.array[i + 1] = worldY;
-      posAttr.needsUpdate = true;
-      updateHomography(activeSurface);
-      const handleEl = activeSurface.handles[activeHandleIndex];
-      handleEl.style.left = x + 'px';
-      handleEl.style.top = y + 'px';
+
+      if (target.classList.contains('handle')) {
+        const surfaceId = target.dataset.surface;
+        const surface = surfaces.get(surfaceId);
+        if (!surface) return;
+
+        event.preventDefault();
+        dragMode = 'handle';
+        activeSurface = surface;
+        activeHandleIndex = parseInt(target.dataset.index, 10);
+      } else {
+        const picked = pickSurfaceAtScreen(x, y);
+        if (!picked) return;
+        dragMode = 'whole';
+        activeSurface = picked;
+        activeHandleIndex = null;
+      }
+
+      if (!activeSurface) return;
+
+      dragStartPointer = { x: worldX, y: worldY };
+      dragStartActivePositions = new Float32Array(activeSurface.geometry.getAttribute('position').array);
+      dragStartActiveQuad = positionsToQuad(dragStartActivePositions);
+      dragStartAllPositions = null;
+      if (linkAllSurfaces) {
+        dragStartAllPositions = new Map();
+        surfaces.forEach((s, id) => {
+          const arr = s.geometry.getAttribute('position').array;
+          dragStartAllPositions.set(id, new Float32Array(arr));
+        });
+      }
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+
+      if (activeSurface.currentMedia === 'video') {
+        activeSurface.videoElement.play().catch(() => {});
+      }
+    }
+
+    function onMouseMove(event) {
+      if (!activeSurface || !dragMode) return;
+      const rect = app.getBoundingClientRect();
+      let x = event.clientX - rect.left;
+      let y = event.clientY - rect.top;
+      x = Math.max(0, Math.min(width, x));
+      y = Math.max(0, Math.min(height, y));
+      const worldX = x;
+      const worldY = height - y;
+
+      if (dragMode === 'handle' && activeHandleIndex !== null) {
+        const targetPositions = dragStartActivePositions
+          ? new Float32Array(dragStartActivePositions)
+          : new Float32Array(activeSurface.geometry.getAttribute('position').array);
+        const i = activeHandleIndex * 3;
+        targetPositions[i] = worldX;
+        targetPositions[i + 1] = worldY;
+
+        if (linkAllSurfaces && dragStartActiveQuad && dragStartAllPositions) {
+          const newQuad = positionsToQuad(targetPositions);
+          const transform = solveHomographyQuadToQuad(dragStartActiveQuad, newQuad);
+          if (transform) {
+            surfaces.forEach((surface, id) => {
+              const basePositions = dragStartAllPositions.get(id);
+              if (!basePositions) return;
+              const updatedPositions = applyHomographyToPositions(transform, basePositions);
+              applyPositionsToGeometry(surface.geometry, updatedPositions);
+              setHandlesFromGeometry(surface);
+              updateHomography(surface);
+            });
+            return;
+          }
+        }
+
+        applyPositionsToGeometry(activeSurface.geometry, targetPositions);
+        setHandlesFromGeometry(activeSurface);
+        updateHomography(activeSurface);
+        return;
+      }
+
+      if (dragMode === 'whole' && dragStartPointer) {
+        const dx = worldX - dragStartPointer.x;
+        const dy = worldY - dragStartPointer.y;
+        if (linkAllSurfaces && dragStartAllPositions) {
+          surfaces.forEach((surface, id) => {
+            const basePositions = dragStartAllPositions.get(id);
+            if (!basePositions) return;
+            const translated = new Float32Array(basePositions.length);
+            for (let i = 0; i < basePositions.length; i += 3) {
+              translated[i] = basePositions[i] + dx;
+              translated[i + 1] = basePositions[i + 1] + dy;
+              translated[i + 2] = 0;
+            }
+            applyPositionsToGeometry(surface.geometry, translated);
+            setHandlesFromGeometry(surface);
+            updateHomography(surface);
+          });
+        } else {
+          const translated = new Float32Array(dragStartActivePositions.length);
+          for (let i = 0; i < dragStartActivePositions.length; i += 3) {
+            translated[i] = dragStartActivePositions[i] + dx;
+            translated[i + 1] = dragStartActivePositions[i + 1] + dy;
+            translated[i + 2] = 0;
+          }
+          applyPositionsToGeometry(activeSurface.geometry, translated);
+          setHandlesFromGeometry(activeSurface);
+          updateHomography(activeSurface);
+        }
+      }
     }
 
     function onMouseUp() {
       const surface = activeSurface;
       activeSurface = null;
       activeHandleIndex = null;
+      dragStartActivePositions = null;
+      dragStartActiveQuad = null;
+      dragStartAllPositions = null;
+      dragStartPointer = null;
+      dragMode = null;
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       if (surface && surface.currentMedia === 'effect' && surface.effectName) {
         applyEffectToSurface(surface, surface.effectName, { force: true });
+      }
+      if (surface) {
+        saveState();
       }
     }
 
@@ -1272,10 +1979,27 @@
       createSurface();
     });
 
+    if (linkAllToggle) {
+      linkAllToggle.addEventListener('change', () => {
+        linkAllSurfaces = linkAllToggle.checked;
+        saveState();
+      });
+    }
+
     playBtn.addEventListener('click', () => {
       surfaces.forEach(surface => {
         surface.videoElement.play().catch(() => {});
       });
+    });
+
+    window.addEventListener('resize', () => {
+      width = app.clientWidth;
+      height = app.clientHeight;
+      renderer.setSize(width, height, false);
+      surfaces.forEach(surface => {
+        updateHomography(surface);
+      });
+      saveState();
     });
 
     function animate() {
@@ -1295,7 +2019,10 @@
       renderer.render(scene, camera);
     }
 
-    createSurface();
+    loadState();
+    if (surfaceOrder.length === 0) {
+      createSurface();
+    }
     animate();
   </script>
 </body>
