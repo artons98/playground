@@ -381,7 +381,6 @@
   <!-- three.js via CDN -->
   <script type="module">
     import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-    import confetti, { shapeFromPath, shapeFromText } from 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.module.mjs';
 
     const app = document.getElementById('app');
     const canvas = document.getElementById('glcanvas');
@@ -443,41 +442,8 @@
 
     startPlaceholderLoad();
 
-    const CONFETTI_SHAPE_OPTIONS = [
-      { value: 'square', label: 'Vierkant' },
-      { value: 'circle', label: 'Cirkel' },
-      { value: 'star', label: 'Ster' },
-      { value: 'emoji', label: 'Emoji' },
-      { value: 'icon', label: 'Icoon' }
-    ];
-
-    const CONFETTI_ICON_OPTIONS = [
-      {
-        value: 'star',
-        label: 'Ster',
-        path: 'M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z'
-      },
-      {
-        value: 'heart',
-        label: 'Hart',
-        path: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54z'
-      },
-      {
-        value: 'bolt',
-        label: 'Bliksem',
-        path: 'M13 2L3 14h7l-1 8 10-12h-7l1-8z'
-      }
-    ];
-
-    const CONFETTI_DEFAULTS = {
-      shapes: ['square', 'circle', 'star'],
-      emoji: '🎉',
-      icon: 'star'
-    };
-
     const EFFECT_OPTIONS = [
       { value: '', label: 'Geen effect' },
-      { value: 'confetti', label: 'Confetti loop' },
       { value: 'border-rainbow-8', label: 'Border Rainbow 8px' },
       { value: 'border-rainbow-16', label: 'Border Rainbow 16px' },
       { value: 'border-rainbow-32', label: 'Border Rainbow 32px' },
@@ -486,38 +452,6 @@
     ];
 
     const EFFECT_DEFINITIONS = {
-      confetti: {
-        size: 1024,
-        maxSize: 2048,
-        draw(ctx, time, surface) {
-          if (!surface) return;
-          if (!surface.confettiInstance) {
-            surface.confettiInstance = confetti.create(ctx.canvas, { resize: true, useWorker: true });
-            surface.confettiLastBurst = 0;
-          }
-
-          const now = time;
-          const interval = 300;
-          if (now - surface.confettiLastBurst < interval) return;
-          surface.confettiLastBurst = now;
-
-          const shapes = getConfettiShapes(surface);
-          if (!shapes.length) return;
-
-          surface.confettiInstance({
-            particleCount: 14,
-            spread: 60,
-            startVelocity: 18,
-            ticks: 200,
-            scalar: 1,
-            shapes,
-            origin: {
-              x: Math.random(),
-              y: Math.random() * 0.35
-            }
-          });
-        }
-      },
       'border-rainbow-8': {
         size: 5120,
         draw(ctx, time) {
@@ -671,97 +605,6 @@
           }
         }
     };
-
-    function getConfettiShapeSelection(surface) {
-      if (!Array.isArray(surface.confettiShapes)) {
-        return [...CONFETTI_DEFAULTS.shapes];
-      }
-      const allowed = new Set(CONFETTI_SHAPE_OPTIONS.map(option => option.value));
-      const unique = [];
-      surface.confettiShapes.forEach(shape => {
-        if (allowed.has(shape) && !unique.includes(shape)) {
-          unique.push(shape);
-        }
-      });
-      return unique;
-    }
-
-    function parseConfettiEmojis(value) {
-      const raw = (value || '').trim();
-      if (!raw) return [];
-      return raw.split(/[\s,]+/).filter(Boolean);
-    }
-
-    function getConfettiShapes(surface) {
-      const shapeSelection = getConfettiShapeSelection(surface);
-      const emojiValue = surface.confettiEmoji || CONFETTI_DEFAULTS.emoji;
-      const iconValue = surface.confettiIcon || CONFETTI_DEFAULTS.icon;
-      const cacheKey = JSON.stringify({
-        shapeSelection,
-        emojiValue,
-        iconValue
-      });
-      if (surface.confettiShapeCacheKey === cacheKey && surface.confettiShapeCache) {
-        return surface.confettiShapeCache;
-      }
-      const shapes = [];
-      if (shapeSelection.includes('square')) shapes.push('square');
-      if (shapeSelection.includes('circle')) shapes.push('circle');
-      if (shapeSelection.includes('star')) shapes.push('star');
-      if (shapeSelection.includes('emoji')) {
-        const emojis = parseConfettiEmojis(emojiValue);
-        emojis.forEach(emoji => {
-          try {
-            shapes.push(shapeFromText({ text: emoji }));
-          } catch (error) {
-            console.warn('Kon confetti emoji niet maken:', error);
-          }
-        });
-      }
-      if (shapeSelection.includes('icon')) {
-        const icon = CONFETTI_ICON_OPTIONS.find(option => option.value === iconValue);
-        if (icon) {
-          try {
-            shapes.push(shapeFromPath({ path: icon.path }));
-          } catch (error) {
-            console.warn('Kon confetti icoon niet maken:', error);
-          }
-        }
-      }
-      surface.confettiShapeCacheKey = cacheKey;
-      surface.confettiShapeCache = shapes;
-      return shapes;
-    }
-
-    function updateConfettiControls(surface) {
-      if (!surface.ui) return;
-      const shapeSelection = getConfettiShapeSelection(surface);
-      if (surface.ui.confettiEmojiInput) {
-        surface.ui.confettiEmojiInput.disabled = !shapeSelection.includes('emoji');
-      }
-      if (surface.ui.confettiIconSelect) {
-        surface.ui.confettiIconSelect.disabled = !shapeSelection.includes('icon');
-      }
-    }
-
-    function updateConfettiSettings(surface) {
-      if (!surface.ui) return;
-      if (surface.ui.confettiShapeInputs) {
-        surface.confettiShapes = surface.ui.confettiShapeInputs
-          .filter(input => input.checked)
-          .map(input => input.value);
-      }
-      if (surface.ui.confettiEmojiInput) {
-        surface.confettiEmoji = surface.ui.confettiEmojiInput.value;
-      }
-      if (surface.ui.confettiIconSelect) {
-        surface.confettiIcon = surface.ui.confettiIconSelect.value;
-      }
-      surface.confettiShapeCacheKey = '';
-      surface.confettiShapeCache = null;
-      updateConfettiControls(surface);
-      saveState();
-    }
 
     const camera = new THREE.OrthographicCamera(
       0,
@@ -1276,9 +1119,6 @@
         gridColor: `#${surface.material.uniforms.gridColor.value.getHexString()}`,
         media: surface.currentMedia,
         effectName: surface.effectName || '',
-        confettiShapes: surface.confettiShapes || [],
-        confettiEmoji: surface.confettiEmoji || '',
-        confettiIcon: surface.confettiIcon || '',
         imageUrl: surface.currentImageUrl || '',
         imageLabel: surface.imageLabel || '',
         videoUrl: surface.currentVideoUrl || '',
@@ -1505,15 +1345,12 @@
     function updateContentVisibility(surface) {
       if (!surface.ui || !surface.ui.rows) return;
       const type = surface.contentType || 'color';
-      const { colorRow, videoRow, imageRow, effectRow, fitRow, confettiRow } = surface.ui.rows;
+      const { colorRow, videoRow, imageRow, effectRow, fitRow } = surface.ui.rows;
       if (colorRow) colorRow.style.display = type === 'color' ? '' : 'none';
       if (videoRow) videoRow.style.display = type === 'video' ? '' : 'none';
       if (imageRow) imageRow.style.display = type === 'image' ? '' : 'none';
       if (effectRow) effectRow.style.display = type === 'effect' ? '' : 'none';
       if (fitRow) fitRow.style.display = (type === 'video' || type === 'image') ? '' : 'none';
-      if (confettiRow) {
-        confettiRow.style.display = (type === 'effect' && surface.effectName === 'confetti') ? '' : 'none';
-      }
     }
 
     function updateGridVisibility(surface) {
@@ -1751,10 +1588,6 @@
       surface.effectLastTime = 0;
       surface.effectAspect = 1;
       surface.effectBounds = null;
-      surface.confettiInstance = null;
-      surface.confettiLastBurst = 0;
-      surface.confettiShapeCacheKey = '';
-      surface.confettiShapeCache = null;
       if (resetUI && surface.ui && surface.ui.effectSelect) {
         surface.ui.effectSelect.value = '';
       }
@@ -1763,7 +1596,6 @@
         updateSurfaceStatus(surface);
         applyPlaceholderImage(surface);
       }
-      updateContentVisibility(surface);
     }
 
     function applyEffectToSurface(surface, effectName, { force = false } = {}) {
@@ -1827,7 +1659,6 @@
         surface.ui.effectSelect.value = effectName;
       }
       updateSurfaceStatus(surface);
-      updateContentVisibility(surface);
       saveState();
     }
 
@@ -2031,7 +1862,7 @@
       effectRow.className = 'control-row';
       const effectLabel = document.createElement('span');
       effectLabel.className = 'control-label';
-      effectLabel.textContent = 'Effect';
+      effectLabel.textContent = 'CSS effect';
       const effectSelect = document.createElement('select');
       EFFECT_OPTIONS.forEach(optionData => {
         const option = document.createElement('option');
@@ -2042,52 +1873,6 @@
       effectRow.appendChild(effectLabel);
       effectRow.appendChild(effectSelect);
       block.appendChild(effectRow);
-
-      const confettiRow = document.createElement('div');
-      confettiRow.className = 'control-row';
-      const confettiLabel = document.createElement('span');
-      confettiLabel.className = 'control-label';
-      confettiLabel.textContent = 'Confetti';
-      const confettiConfig = document.createElement('div');
-      confettiConfig.style.display = 'flex';
-      confettiConfig.style.flexWrap = 'wrap';
-      confettiConfig.style.gap = '6px';
-
-      const confettiShapeInputs = CONFETTI_SHAPE_OPTIONS.map(optionData => {
-        const optionLabel = document.createElement('label');
-        optionLabel.className = 'control-label';
-        optionLabel.style.display = 'flex';
-        optionLabel.style.alignItems = 'center';
-        optionLabel.style.gap = '4px';
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.value = optionData.value;
-        input.checked = surface.confettiShapes.includes(optionData.value);
-        optionLabel.appendChild(input);
-        optionLabel.appendChild(document.createTextNode(optionData.label));
-        confettiConfig.appendChild(optionLabel);
-        return input;
-      });
-
-      const confettiEmojiInput = document.createElement('input');
-      confettiEmojiInput.type = 'text';
-      confettiEmojiInput.placeholder = '🎉 ✨';
-      confettiEmojiInput.value = surface.confettiEmoji || CONFETTI_DEFAULTS.emoji;
-      confettiConfig.appendChild(confettiEmojiInput);
-
-      const confettiIconSelect = document.createElement('select');
-      CONFETTI_ICON_OPTIONS.forEach(optionData => {
-        const option = document.createElement('option');
-        option.value = optionData.value;
-        option.textContent = optionData.label;
-        confettiIconSelect.appendChild(option);
-      });
-      confettiIconSelect.value = surface.confettiIcon || CONFETTI_DEFAULTS.icon;
-      confettiConfig.appendChild(confettiIconSelect);
-
-      confettiRow.appendChild(confettiLabel);
-      confettiRow.appendChild(confettiConfig);
-      block.appendChild(confettiRow);
 
       const fitRow = document.createElement('div');
       fitRow.className = 'control-row';
@@ -2172,9 +1957,6 @@
         imageInput,
         removeImageBtn,
         effectSelect,
-        confettiShapeInputs,
-        confettiEmojiInput,
-        confettiIconSelect,
         removeBtn,
         gridEnabled,
         gridLines,
@@ -2186,7 +1968,6 @@
           videoRow,
           imageRow,
           effectRow,
-          confettiRow,
           fitRow,
           gridRow
         }
@@ -2200,7 +1981,6 @@
       if (typeSelect) {
         typeSelect.value = surface.contentType || 'color';
       }
-      updateConfettiControls(surface);
 
       // ensure newly created block is in correct DOM order
       refreshSurfaceList();
@@ -2227,12 +2007,6 @@
       effectSelect.addEventListener('change', event => {
         applyEffectToSurface(surface, event.target.value);
       });
-      confettiShapeInputs.forEach(input => {
-        input.addEventListener('change', () => updateConfettiSettings(surface));
-      });
-      confettiEmojiInput.addEventListener('input', () => updateConfettiSettings(surface));
-      confettiEmojiInput.addEventListener('blur', () => updateConfettiSettings(surface));
-      confettiIconSelect.addEventListener('change', () => updateConfettiSettings(surface));
       typeSelect.addEventListener('change', event => {
         setSurfaceContentType(surface, event.target.value);
       });
@@ -2345,13 +2119,6 @@
       if (data.gridColor) {
         surface.material.uniforms.gridColor.value = new THREE.Color(data.gridColor);
       }
-      surface.confettiShapes = Array.isArray(data.confettiShapes)
-        ? [...data.confettiShapes]
-        : [...CONFETTI_DEFAULTS.shapes];
-      surface.confettiEmoji = data.confettiEmoji || CONFETTI_DEFAULTS.emoji;
-      surface.confettiIcon = data.confettiIcon || CONFETTI_DEFAULTS.icon;
-      surface.confettiShapeCacheKey = '';
-      surface.confettiShapeCache = null;
 
       if (data.media === 'effect' && data.effectName) {
         applyEffectToSurface(surface, data.effectName, { force: true });
@@ -2402,17 +2169,9 @@
         surface.ui.gridColor.value = data.gridColor || '#ffffff';
         surface.ui.colorInput.value = (data.colorHex && data.colorHex !== 'transparent') ? data.colorHex : (surface.colorHex !== 'transparent' ? surface.colorHex : '#ffffff');
         if (surface.ui.effectSelect) surface.ui.effectSelect.value = data.effectName || '';
-        if (surface.ui.confettiEmojiInput) surface.ui.confettiEmojiInput.value = surface.confettiEmoji || CONFETTI_DEFAULTS.emoji;
-        if (surface.ui.confettiIconSelect) surface.ui.confettiIconSelect.value = surface.confettiIcon || CONFETTI_DEFAULTS.icon;
-        if (surface.ui.confettiShapeInputs) {
-          surface.ui.confettiShapeInputs.forEach(input => {
-            input.checked = surface.confettiShapes.includes(input.value);
-          });
-        }
       }
       updateContentVisibility(surface);
       updateGridVisibility(surface);
-      updateConfettiControls(surface);
     }
 
     function createSurface({ colorHex, fitMode } = {}) {
@@ -2456,13 +2215,6 @@
         effectLastTime: 0,
         effectAspect: 1,
         effectBounds: null,
-        confettiShapes: [...CONFETTI_DEFAULTS.shapes],
-        confettiEmoji: CONFETTI_DEFAULTS.emoji,
-        confettiIcon: CONFETTI_DEFAULTS.icon,
-        confettiInstance: null,
-        confettiLastBurst: 0,
-        confettiShapeCacheKey: '',
-        confettiShapeCache: null,
         fitMode: fitMode === 'contain' ? 'contain' : 'cover',
         contentType: 'color',
         title: '',
@@ -2757,7 +2509,7 @@
           surface.videoTexture.needsUpdate = true;
         }
         if (surface.currentMedia === 'effect' && surface.effectDefinition && surface.effectCtx) {
-          surface.effectDefinition.draw(surface.effectCtx, now - surface.effectStartTime, surface);
+          surface.effectDefinition.draw(surface.effectCtx, now - surface.effectStartTime);
           if (surface.effectTexture) {
             surface.effectTexture.needsUpdate = true;
           }
