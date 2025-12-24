@@ -598,6 +598,7 @@
         uniforms: {
           map: { value: initialTexture },
           homography: { value: matrix },
+          gridHomography: { value: matrix.clone() },
           gridEnabled: { value: true },
           gridLines: { value: 10 },
           gridLineWidth: { value: 3 },
@@ -606,15 +607,19 @@
           surfaceHeight: { value: 1 }
         },
         vertexShader: `
+          attribute vec2 localUV;
           varying vec2 vWorld;
+          varying vec2 vLocalUV;
           void main() {
             vWorld = position.xy;
+            vLocalUV = localUV;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `,
         fragmentShader: `
           uniform sampler2D map;
           uniform mat3 homography;
+          uniform mat3 gridHomography;
           uniform bool gridEnabled;
           uniform float gridLines;
           uniform float gridLineWidth;
@@ -622,31 +627,38 @@
           uniform float surfaceWidth;
           uniform float surfaceHeight;
           varying vec2 vWorld;
+          varying vec2 vLocalUV;
 
           void main() {
             vec3 uvw = homography * vec3(vWorld, 1.0);
             float w = uvw.z;
             if (abs(w) < 1e-6) discard;
             vec2 uv = uvw.xy / w;
-            if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-              discard;
-            }
-            vec4 texColor = texture2D(map, uv);
+            bool inRange = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
+            vec4 texColor = inRange ? texture2D(map, uv) : vec4(0.0);
             if (gridEnabled) {
-              float lines = max(gridLines, 1.0);
-              float spacingU = 1.0 / lines;
-              float spacingV = 1.0 / lines;
-              float posU = mod(uv.x, spacingU);
-              float posV = mod(uv.y, spacingV);
-              float distU = min(posU, spacingU - posU);
-              float distV = min(posV, spacingV - posV);
-              float minSpacing = min(spacingU, spacingV);
-              float halfW = minSpacing * 0.49;
-              float userHalfW = (max(gridLineWidth, 0.0) / 100.0) * minSpacing;
-              halfW = min(halfW, userHalfW);
-              if (distU <= halfW || distV <= halfW) {
-                gl_FragColor = vec4(gridColor, 1.0);
-                return;
+              vec3 guvw = gridHomography * vec3(vWorld, 1.0);
+              float gw = guvw.z;
+              if (abs(gw) > 1e-6) {
+                vec2 guv = guvw.xy / gw;
+                float lines = max(gridLines, 1.0);
+                float spacingU = 1.0 / lines;
+                float spacingV = 1.0 / lines;
+                float posU = mod(guv.x, spacingU);
+                float posV = mod(guv.y, spacingV);
+                float distU = min(posU, spacingU - posU);
+                float distV = min(posV, spacingV - posV);
+                float minSpacing = min(spacingU, spacingV);
+                float halfW = minSpacing * 0.49;
+                float userHalfW = (max(gridLineWidth, 0.0) / 100.0) * minSpacing;
+                halfW = min(halfW, userHalfW);
+                float aa = max(fwidth(guv.x), fwidth(guv.y));
+                float edge = min(distU, distV);
+                float alpha = 1.0 - smoothstep(halfW - aa, halfW + aa, edge);
+                if (alpha > 0.0) {
+                  gl_FragColor = vec4(gridColor, alpha);
+                  return;
+                }
               }
             }
             gl_FragColor = texColor;
@@ -807,6 +819,7 @@
         1, 0
       ]);
       geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+      geometry.setAttribute('localUV', new THREE.BufferAttribute(uvs.slice(), 2));
       geometry.setIndex([0, 1, 2, 2, 1, 3]);
       applyRectToGeometry(geometry, rect || {
         left: 0,
@@ -849,6 +862,7 @@
         id: surface.id,
         positions: norm,
         colorHex: surface.colorHex,
+        fitMode: surface.fitMode || 'cover',
         gridEnabled: surface.material.uniforms.gridEnabled.value,
         gridLines: surface.material.uniforms.gridLines.value,
         gridLineWidth: surface.material.uniforms.gridLineWidth.value,
@@ -919,7 +933,10 @@
       isRestoring = true;
       parsed.order.forEach(id => {
         const data = parsed.surfaces.find(s => s.id === id);
-        const s = createSurface({ colorHex: data && data.colorHex ? data.colorHex : DEFAULT_COLOR });
+        const s = createSurface({
+          colorHex: data && data.colorHex ? data.colorHex : DEFAULT_COLOR,
+          fitMode: data && data.fitMode ? data.fitMode : 'cover'
+        });
         if (!s) return;
         if (data) {
           applySavedSurfaceData(s, data);
@@ -950,22 +967,36 @@
           { u: 1, v: 0 }
         ];
       }
-      const textureAspect = texture.image.width / texture.image.height;
+      const texW = texture.image.videoWidth || texture.image.width || 1;
+      const texH = texture.image.videoHeight || texture.image.height || 1;
+      const textureAspectRaw = texW / texH;
+      const textureAspect = Number.isFinite(textureAspectRaw) && textureAspectRaw > 0 ? textureAspectRaw : 1;
       const bounds = getSurfaceBounds(surface);
       const surfaceAspect = bounds.aspect;
       let uMin = 0, uMax = 1, vMin = 0, vMax = 1;
-      if (surfaceAspect > textureAspect) {
-        // Oppervlak is breder: horizontaal bijsnijden, schaal U
-        const scale = surfaceAspect / textureAspect;
-        uMin = (1 - scale) / 2;
-        uMax = uMin + scale;
-        // vMin = 0, vMax = 1
-      } else {
-        // Oppervlak is hoger: verticaal bijsnijden, schaal V
-        const scale = textureAspect / surfaceAspect;
-        vMin = (1 - scale) / 2;
-        vMax = vMin + scale;
-        // uMin = 0, uMax = 1
+      const fitMode = surface.fitMode === 'contain' ? 'contain' : 'cover';
+      if (fitMode === 'contain') {
+        if (surfaceAspect > textureAspect) {
+          const scaleU = surfaceAspect / textureAspect; // > 1, create side bars
+          uMin = (1 - scaleU) / 2;
+          uMax = uMin + scaleU;
+        } else {
+          const scaleV = textureAspect / surfaceAspect; // > 1, create top/bottom bars
+          vMin = (1 - scaleV) / 2;
+          vMax = vMin + scaleV;
+        }
+      } else { // cover
+        if (surfaceAspect > textureAspect) {
+          const scaleV = surfaceAspect / textureAspect;
+          const visibleV = 1 / scaleV;
+          vMin = (1 - visibleV) / 2;
+          vMax = vMin + visibleV;
+        } else {
+          const scaleU = textureAspect / surfaceAspect;
+          const visibleU = 1 / scaleU;
+          uMin = (1 - visibleU) / 2;
+          uMax = uMin + visibleU;
+        }
       }
       return [
         { u: uMin, v: vMax },
@@ -1063,11 +1094,23 @@
       }
       const targetUVs = calculateTargetUVs(surface);
       const solution = solveHomography(quad, targetUVs);
-      if (!solution) return;
+      const baseUVs = [
+        { u: 0, v: 1 },
+        { u: 1, v: 1 },
+        { u: 0, v: 0 },
+        { u: 1, v: 0 }
+      ];
+      const gridSolution = solveHomography(quad, baseUVs);
+      if (!solution || !gridSolution) return;
       surface.homography.set(
         solution[0], solution[1], solution[2],
         solution[3], solution[4], solution[5],
         solution[6], solution[7], 1
+      );
+      surface.material.uniforms.gridHomography.value.set(
+        gridSolution[0], gridSolution[1], gridSolution[2],
+        gridSolution[3], gridSolution[4], gridSolution[5],
+        gridSolution[6], gridSolution[7], 1
       );
       const bounds = getSurfaceBounds(surface);
       surface.material.uniforms.surfaceWidth.value = bounds.width;
@@ -1470,6 +1513,26 @@
       effectRow.appendChild(effectSelect);
       block.appendChild(effectRow);
 
+      const fitRow = document.createElement('div');
+      fitRow.className = 'control-row';
+      const fitLabel = document.createElement('span');
+      fitLabel.className = 'control-label';
+      fitLabel.textContent = 'Schaal';
+      const fitSelect = document.createElement('select');
+      const fitOptions = [
+        { value: 'cover', label: 'Cover (vullend)' },
+        { value: 'contain', label: 'Contain (passen)' }
+      ];
+      fitOptions.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        fitSelect.appendChild(option);
+      });
+      fitRow.appendChild(fitLabel);
+      fitRow.appendChild(fitSelect);
+      block.appendChild(fitRow);
+
       const gridRow = document.createElement('div');
       gridRow.className = 'control-row';
       const gridLabel = document.createElement('span');
@@ -1526,6 +1589,7 @@
         upBtn,
         downBtn,
         duplicateBtn,
+        fitSelect,
         colorInput,
         applyBtn,
         videoInput,
@@ -1542,6 +1606,9 @@
       };
       if (surface.effectName) {
         effectSelect.value = surface.effectName;
+      }
+      if (fitSelect) {
+        fitSelect.value = surface.fitMode || 'cover';
       }
 
       applyBtn.addEventListener('click', () => applySurfaceColor(surface, colorInput.value));
@@ -1564,6 +1631,11 @@
       removeImageBtn.addEventListener('click', () => clearSurfaceImage(surface));
       effectSelect.addEventListener('change', event => {
         applyEffectToSurface(surface, event.target.value);
+      });
+      fitSelect.addEventListener('change', event => {
+        surface.fitMode = event.target.value === 'contain' ? 'contain' : 'cover';
+        updateHomography(surface);
+        saveState();
       });
       upBtn.addEventListener('click', () => moveSurface(surface.id, -1));
       downBtn.addEventListener('click', () => moveSurface(surface.id, 1));
@@ -1641,6 +1713,7 @@
 
     function applySavedSurfaceData(surface, data) {
       if (!data) return;
+      surface.fitMode = data.fitMode === 'contain' ? 'contain' : 'cover';
       restoreSurfaceGeometry(surface, data.positions || []);
       surface.material.uniforms.gridEnabled.value = !!data.gridEnabled;
       surface.material.uniforms.gridLines.value = Math.max(1, data.gridLines || 10);
@@ -1689,6 +1762,7 @@
 
       surface.material.uniformsNeedUpdate = true;
       if (surface.ui) {
+        surface.ui.fitSelect.value = surface.fitMode;
         surface.ui.gridEnabled.checked = !!data.gridEnabled;
         surface.ui.gridLines.value = data.gridLines || 10;
         surface.ui.gridWidth.value = data.gridLineWidth || 1;
@@ -1698,7 +1772,7 @@
       }
     }
 
-    function createSurface({ colorHex } = {}) {
+    function createSurface({ colorHex, fitMode } = {}) {
       const id = `surface-${++surfaceCounter}`;
       const videoElement = createVideoElement();
       const videoTexture = createVideoTexture(videoElement);
@@ -1739,6 +1813,7 @@
         effectLastTime: 0,
         effectAspect: 1,
         effectBounds: null,
+        fitMode: fitMode === 'contain' ? 'contain' : 'cover',
         ui: null
       };
 
