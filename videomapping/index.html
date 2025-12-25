@@ -606,6 +606,104 @@
         }
     };
 
+    const ANIMATION_OPTIONS = [
+      { value: '', label: 'Geen animatie' },
+      { value: 'conic-grid-shift', label: 'Conic grid shift' }
+    ];
+
+    const ANIMATION_DEFINITIONS = {
+      'conic-grid-shift': {
+        size: 2048,
+        maxSize: 4096,
+        duration: 12000,
+        draw(ctx, timeMs) {
+          const { width, height } = ctx.canvas;
+          const duration = 12000;
+          const t = ((timeMs % duration) + duration) % duration / duration;
+          const unit = Math.max(Math.min(width, height) * 0.025, 8);
+          const keyframes = [
+            { p: 0.0, values: [0, 0, 1, 2, 3] },
+            { p: 0.075, values: [0, 0, 1, 2, 3] },
+            { p: 0.125, values: [0, 1, 0, 3, 2] },
+            { p: 0.20, values: [0, 1, 0, 3, 2] },
+            { p: 0.25, values: [0, -1, -2, 5, 4] },
+            { p: 0.325, values: [0, -1, -2, 5, 4] },
+            { p: 0.375, values: [0, 1, -4, 7, 2] },
+            { p: 0.45, values: [0, 1, -4, 7, 2] },
+            { p: 0.50, values: [0, -2, -5, 8, 5] },
+            { p: 0.575, values: [0, -2, -5, 8, 5] },
+            { p: 0.625, values: [0, -3, -4, 7, 6] },
+            { p: 0.70, values: [0, -3, -4, 7, 6] },
+            { p: 0.75, values: [0, -1, -2, 5, 4] },
+            { p: 0.825, values: [0, -1, -2, 5, 4] },
+            { p: 0.875, values: [0, -3, 0, 3, 6] },
+            { p: 0.95, values: [0, -3, 0, 3, 6] },
+            { p: 1.0, values: [0, 0, 1, 2, 3] }
+          ];
+
+          const lerp = (a, b, k) => a + (b - a) * k;
+          const sampleFrame = (frames, tNorm) => {
+            let prev = frames[frames.length - 1];
+            let next = frames[0];
+            for (let i = 0; i < frames.length; i++) {
+              if (tNorm >= frames[i].p) {
+                prev = frames[i];
+                next = frames[(i + 1) % frames.length];
+              }
+            }
+            const span = (next.p - prev.p + 1) % 1 || 1;
+            const localT = ((tNorm - prev.p + 1) % 1) / span;
+            return prev.values.map((v, idx) => lerp(v, next.values[idx], localT));
+          };
+
+          const offsets = sampleFrame(keyframes, t);
+          const rotation = (timeMs / duration) * Math.PI * 2;
+          const palette = ['#1d351d', '#325632', '#8b181d', '#6f0f11'];
+          ctx.clearRect(0, 0, width, height);
+
+          const drawRadialLayer = () => {
+            const step = unit;
+            const radius = unit * 0.6;
+            for (let y = -step; y < height + step; y += step) {
+              for (let x = -step; x < width + step; x += step) {
+                const cx = x + offsets[0] * unit + step / 2;
+                const cy = y + offsets[0] * unit + step / 2;
+                const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+                grad.addColorStop(0, 'rgba(255,255,255,0.06)');
+                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(cx - step / 2, cy - step / 2, step, step);
+              }
+            }
+          };
+
+          const drawConicLayer = (layerIndex, color, rotationOffset) => {
+            const step = unit * 4;
+            for (let y = -step; y < height + step; y += step) {
+              for (let x = -step; x < width + step; x += step) {
+                const cx = x + offsets[layerIndex + 1] * unit + step / 2;
+                const cy = y + offsets[layerIndex + 1] * unit + step / 2;
+                const grad = typeof ctx.createConicGradient === 'function'
+                  ? ctx.createConicGradient(rotation + rotationOffset, cx, cy)
+                  : ctx.createLinearGradient(cx - step / 2, cy - step / 2, cx + step / 2, cy + step / 2);
+                grad.addColorStop(0.0, 'transparent');
+                grad.addColorStop(0.75, 'transparent');
+                grad.addColorStop(0.75, color);
+                grad.addColorStop(1.0, color);
+                ctx.fillStyle = grad;
+                ctx.fillRect(cx - step / 2, cy - step / 2, step, step);
+              }
+            }
+          };
+
+          drawRadialLayer();
+          palette.forEach((color, idx) => {
+            drawConicLayer(idx, color, idx * 0.4);
+          });
+        }
+      }
+    };
+
     const camera = new THREE.OrthographicCamera(
       0,
       width,
@@ -1119,6 +1217,7 @@
         gridColor: `#${surface.material.uniforms.gridColor.value.getHexString()}`,
         media: surface.currentMedia,
         effectName: surface.effectName || '',
+        animationName: surface.animationName || '',
         imageUrl: surface.currentImageUrl || '',
         imageLabel: surface.imageLabel || '',
         videoUrl: surface.currentVideoUrl || '',
@@ -1345,11 +1444,12 @@
     function updateContentVisibility(surface) {
       if (!surface.ui || !surface.ui.rows) return;
       const type = surface.contentType || 'color';
-      const { colorRow, videoRow, imageRow, effectRow, fitRow } = surface.ui.rows;
+      const { colorRow, videoRow, imageRow, effectRow, animationRow, fitRow } = surface.ui.rows;
       if (colorRow) colorRow.style.display = type === 'color' ? '' : 'none';
       if (videoRow) videoRow.style.display = type === 'video' ? '' : 'none';
       if (imageRow) imageRow.style.display = type === 'image' ? '' : 'none';
       if (effectRow) effectRow.style.display = type === 'effect' ? '' : 'none';
+      if (animationRow) animationRow.style.display = type === 'animation' ? '' : 'none';
       if (fitRow) fitRow.style.display = (type === 'video' || type === 'image') ? '' : 'none';
     }
 
@@ -1362,7 +1462,7 @@
     }
 
     function setSurfaceContentType(surface, type) {
-      const newType = ['video', 'image', 'color', 'effect'].includes(type) ? type : 'color';
+      const newType = ['video', 'image', 'color', 'effect', 'animation'].includes(type) ? type : 'color';
       if (surface.contentType === newType) {
         updateContentVisibility(surface);
         return;
@@ -1376,25 +1476,43 @@
         if (surface.currentMedia === 'video') clearSurfaceVideo(surface);
         if (surface.currentMedia === 'image') clearSurfaceImage(surface);
         if (surface.currentMedia === 'effect') clearSurfaceEffect(surface, { revertToColor: false });
+        if (surface.currentMedia === 'animation') clearSurfaceAnimation(surface, { revertToColor: false });
         setSurfaceTexture(surface, surface.colorTexture, 'color');
       } else if (newType === 'video') {
         if (surface.currentMedia === 'image') clearSurfaceImage(surface);
         if (surface.currentMedia === 'effect') clearSurfaceEffect(surface, { revertToColor: false });
+        if (surface.currentMedia === 'animation') clearSurfaceAnimation(surface, { revertToColor: false });
         if (surface.currentMedia !== 'video') {
           setSurfaceTexture(surface, surface.colorTexture, 'color');
         }
       } else if (newType === 'image') {
         if (surface.currentMedia === 'video') clearSurfaceVideo(surface);
         if (surface.currentMedia === 'effect') clearSurfaceEffect(surface, { revertToColor: false });
+        if (surface.currentMedia === 'animation') clearSurfaceAnimation(surface, { revertToColor: false });
         if (surface.currentMedia !== 'image') {
           setSurfaceTexture(surface, surface.colorTexture, 'color');
         }
       } else if (newType === 'effect') {
         if (surface.currentMedia === 'video') clearSurfaceVideo(surface);
         if (surface.currentMedia === 'image') clearSurfaceImage(surface);
+        if (surface.currentMedia === 'animation') clearSurfaceAnimation(surface, { revertToColor: false });
         if (surface.currentMedia !== 'effect') {
           clearSurfaceEffect(surface, { revertToColor: false });
           setSurfaceTexture(surface, surface.colorTexture, 'color');
+        }
+      } else if (newType === 'animation') {
+        if (surface.currentMedia === 'video') clearSurfaceVideo(surface);
+        if (surface.currentMedia === 'image') clearSurfaceImage(surface);
+        if (surface.currentMedia === 'effect') clearSurfaceEffect(surface, { revertToColor: false });
+        if (surface.currentMedia !== 'animation') {
+          clearSurfaceAnimation(surface, { revertToColor: false });
+          setSurfaceTexture(surface, surface.colorTexture, 'color');
+        }
+        const desiredAnimation = (surface.ui && surface.ui.animationSelect && surface.ui.animationSelect.value)
+          || surface.animationName
+          || 'conic-grid-shift';
+        if (desiredAnimation) {
+          applyAnimationToSurface(surface, desiredAnimation, { force: true });
         }
       }
 
@@ -1662,6 +1780,97 @@
       saveState();
     }
 
+    function clearSurfaceAnimation(surface, { resetUI = true, revertToColor = true } = {}) {
+      if (!surface.animationName && !surface.animationTexture) return;
+      if (surface.animationTexture) {
+        surface.animationTexture.dispose();
+      }
+      surface.animationTexture = null;
+      surface.animationCanvas = null;
+      surface.animationCtx = null;
+      surface.animationDefinition = null;
+      surface.animationName = '';
+      surface.animationStartTime = 0;
+      surface.animationLastTime = 0;
+      surface.animationAspect = 1;
+      surface.animationBounds = null;
+      if (resetUI && surface.ui && surface.ui.animationSelect) {
+        surface.ui.animationSelect.value = '';
+      }
+      if (revertToColor) {
+        setSurfaceTexture(surface, surface.colorTexture, 'color');
+        updateSurfaceStatus(surface);
+        applyPlaceholderImage(surface);
+      }
+    }
+
+    function applyAnimationToSurface(surface, animationName, { force = false } = {}) {
+      const isActive = surface.currentMedia === 'animation' && surface.animationName === animationName;
+      if (!force && isActive) return;
+      if (!animationName) {
+        clearSurfaceAnimation(surface, { resetUI: false, revertToColor: true });
+        if (surface.ui && surface.ui.animationSelect) {
+          surface.ui.animationSelect.value = '';
+        }
+        return;
+      }
+      if (surface.currentMedia === 'video') {
+        clearSurfaceVideo(surface);
+      } else if (surface.currentMedia === 'image' && !surface.usingPlaceholderImage) {
+        clearSurfaceImage(surface);
+      }
+      if (surface.currentMedia === 'effect') {
+        clearSurfaceEffect(surface, { revertToColor: false });
+      }
+      clearSurfaceAnimation(surface, { resetUI: false, revertToColor: false });
+      const definition = ANIMATION_DEFINITIONS[animationName];
+      if (!definition) return;
+      const bounds = getSurfaceBounds(surface);
+      const baseSize = definition.size || 1024;
+      const aspect = Math.max(bounds.aspect, 1 / 64);
+      let canvasWidth = baseSize;
+      let canvasHeight = baseSize;
+      if (aspect > 1) {
+        canvasWidth = Math.round(baseSize * aspect);
+      } else {
+        canvasHeight = Math.round(baseSize / aspect);
+      }
+      const maxSize = definition.maxSize || 2048;
+      const scale = Math.min(maxSize / Math.max(canvasWidth, canvasHeight), 1);
+      canvasWidth = Math.max(4, Math.round(canvasWidth * scale));
+      canvasHeight = Math.max(4, Math.round(canvasHeight * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('Kan canvas context niet creëren voor animatie');
+        return;
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      surface.animationName = animationName;
+      surface.animationCanvas = canvas;
+      surface.animationCtx = ctx;
+      surface.animationDefinition = definition;
+      surface.animationTexture = texture;
+      surface.animationStartTime = performance.now();
+      surface.animationLastTime = 0;
+      surface.animationAspect = aspect;
+      surface.animationBounds = bounds;
+      surface.usingPlaceholderImage = false;
+      surface.imageTexture = null;
+      surface.currentImageUrl = null;
+      surface.imageLabel = '';
+      setSurfaceTexture(surface, texture, 'animation');
+      if (surface.ui && surface.ui.animationSelect) {
+        surface.ui.animationSelect.value = animationName;
+      }
+      updateSurfaceStatus(surface);
+      saveState();
+    }
+
     function applyPlaceholderImage(surface) {
       if (placeholderLoadFailed || isRestoring) return;
       onPlaceholderReady(texture => {
@@ -1700,6 +1909,8 @@
         clearSurfaceImage(surface);
       } else if (surface.currentMedia === 'effect') {
         clearSurfaceEffect(surface, { revertToColor: false });
+      } else if (surface.currentMedia === 'animation') {
+        clearSurfaceAnimation(surface, { revertToColor: false });
       }
       setSurfaceTexture(surface, surface.colorTexture, 'color');
       if (previousTexture) {
@@ -1793,7 +2004,8 @@
         { value: 'video', label: 'Video' },
         { value: 'image', label: 'Afbeelding' },
         { value: 'color', label: 'Kleur' },
-        { value: 'effect', label: 'Animatie' }
+        { value: 'effect', label: 'Effect' },
+        { value: 'animation', label: 'Animatie' }
       ];
       typeOptions.forEach(opt => {
         const option = document.createElement('option');
@@ -1873,6 +2085,22 @@
       effectRow.appendChild(effectLabel);
       effectRow.appendChild(effectSelect);
       block.appendChild(effectRow);
+
+      const animationRow = document.createElement('div');
+      animationRow.className = 'control-row';
+      const animationLabel = document.createElement('span');
+      animationLabel.className = 'control-label';
+      animationLabel.textContent = 'Animatie patroon';
+      const animationSelect = document.createElement('select');
+      ANIMATION_OPTIONS.forEach(optionData => {
+        const option = document.createElement('option');
+        option.value = optionData.value;
+        option.textContent = optionData.label;
+        animationSelect.appendChild(option);
+      });
+      animationRow.appendChild(animationLabel);
+      animationRow.appendChild(animationSelect);
+      block.appendChild(animationRow);
 
       const fitRow = document.createElement('div');
       fitRow.className = 'control-row';
@@ -1957,6 +2185,7 @@
         imageInput,
         removeImageBtn,
         effectSelect,
+        animationSelect,
         removeBtn,
         gridEnabled,
         gridLines,
@@ -1968,12 +2197,16 @@
           videoRow,
           imageRow,
           effectRow,
+          animationRow,
           fitRow,
           gridRow
         }
       };
       if (surface.effectName) {
         effectSelect.value = surface.effectName;
+      }
+      if (surface.animationName) {
+        animationSelect.value = surface.animationName;
       }
       if (fitSelect) {
         fitSelect.value = surface.fitMode || 'cover';
@@ -2006,6 +2239,10 @@
       removeImageBtn.addEventListener('click', () => clearSurfaceImage(surface));
       effectSelect.addEventListener('change', event => {
         applyEffectToSurface(surface, event.target.value);
+      });
+      animationSelect.addEventListener('change', event => {
+        setSurfaceContentType(surface, 'animation');
+        applyAnimationToSurface(surface, event.target.value, { force: true });
       });
       typeSelect.addEventListener('change', event => {
         setSurfaceContentType(surface, event.target.value);
@@ -2112,6 +2349,7 @@
       surface.contentType = data.contentType || data.media || 'color';
       surface.title = data.title || surface.title || '';
       surface.fitMode = data.fitMode === 'contain' ? 'contain' : 'cover';
+      surface.animationName = data.animationName || surface.animationName || '';
       restoreSurfaceGeometry(surface, data.positions || []);
       surface.material.uniforms.gridEnabled.value = !!data.gridEnabled;
       surface.material.uniforms.gridLines.value = Math.max(1, data.gridLines || 10);
@@ -2120,7 +2358,9 @@
         surface.material.uniforms.gridColor.value = new THREE.Color(data.gridColor);
       }
 
-      if (data.media === 'effect' && data.effectName) {
+      if (data.media === 'animation' && data.animationName) {
+        applyAnimationToSurface(surface, data.animationName, { force: true });
+      } else if (data.media === 'effect' && data.effectName) {
         applyEffectToSurface(surface, data.effectName, { force: true });
       } else if (data.media === 'image' && data.imageUrl) {
         surface.currentImageUrl = data.imageUrl;
@@ -2169,6 +2409,7 @@
         surface.ui.gridColor.value = data.gridColor || '#ffffff';
         surface.ui.colorInput.value = (data.colorHex && data.colorHex !== 'transparent') ? data.colorHex : (surface.colorHex !== 'transparent' ? surface.colorHex : '#ffffff');
         if (surface.ui.effectSelect) surface.ui.effectSelect.value = data.effectName || '';
+        if (surface.ui.animationSelect) surface.ui.animationSelect.value = data.animationName || '';
       }
       updateContentVisibility(surface);
       updateGridVisibility(surface);
@@ -2215,6 +2456,15 @@
         effectLastTime: 0,
         effectAspect: 1,
         effectBounds: null,
+        animationName: '',
+        animationCanvas: null,
+        animationCtx: null,
+        animationTexture: null,
+        animationDefinition: null,
+        animationStartTime: 0,
+        animationLastTime: 0,
+        animationAspect: 1,
+        animationBounds: null,
         fitMode: fitMode === 'contain' ? 'contain' : 'cover',
         contentType: 'color',
         title: '',
@@ -2286,6 +2536,7 @@
       if (surface.videoTexture) surface.videoTexture.dispose();
       if (surface.imageTexture && !surface.usingPlaceholderImage) surface.imageTexture.dispose();
       if (surface.effectTexture) surface.effectTexture.dispose();
+      if (surface.animationTexture) surface.animationTexture.dispose();
       if (surface.ui && surface.ui.block) {
         surface.ui.block.remove();
       }
@@ -2452,6 +2703,9 @@
       if (surface && surface.currentMedia === 'effect' && surface.effectName) {
         applyEffectToSurface(surface, surface.effectName, { force: true });
       }
+      if (surface && surface.currentMedia === 'animation' && surface.animationName) {
+        applyAnimationToSurface(surface, surface.animationName, { force: true });
+      }
       if (surface) {
         saveState();
       }
@@ -2512,6 +2766,12 @@
           surface.effectDefinition.draw(surface.effectCtx, now - surface.effectStartTime);
           if (surface.effectTexture) {
             surface.effectTexture.needsUpdate = true;
+          }
+        }
+        if (surface.currentMedia === 'animation' && surface.animationDefinition && surface.animationCtx) {
+          surface.animationDefinition.draw(surface.animationCtx, now - surface.animationStartTime);
+          if (surface.animationTexture) {
+            surface.animationTexture.needsUpdate = true;
           }
         }
       });
